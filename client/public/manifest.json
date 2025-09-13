@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Jobmate AI",
+  "version": "1.0",
+  "description": "AI-powered job cover letter generator",
+  "permissions": ["tabs", "scripting", "identity", "identity.email"],
+  "oauth2": {
+    "client_id": "580688879697-nac2f20e4gbrnjpjdnlnvhn2hskni300.apps.googleusercontent.com",
+    "scopes": ["email"]
+  },
+  "action": {
+    "default_popup": "index.html"
+  },
+  "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["contentScript.js"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
