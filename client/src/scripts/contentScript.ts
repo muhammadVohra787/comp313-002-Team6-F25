@@ -1,3 +1,5 @@
+//scripts/contentScript.ts
+
 import { detectJobSite, trimHtml } from "../utils/scrapeHelpers";
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {

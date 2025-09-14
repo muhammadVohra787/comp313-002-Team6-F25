@@ -1,21 +1,16 @@
 import { useState } from "react";
 import { loginWithGoogle, requestPageHTML } from "../utils/contentListeners";
 
-export default function GenerateCover() {
-  const [pageHtml, setPageHtml] = useState("");
-
+export default function MainPage() {
   const handleScrape = async () => {
-    console.log("Scraping page HTML...");
     try {
       const html = await requestPageHTML();
-      setPageHtml(html);
     } catch (err) {
       console.error(err);
     }
   };
 
   const handleLogin = async () => {
-    console.log("Logging in with Google...");
     try {
       await loginWithGoogle();
     } catch (err) {

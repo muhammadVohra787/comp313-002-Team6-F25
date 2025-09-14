@@ -35,7 +35,7 @@ export function loginWithGoogle(): Promise<void> {
                 return;
             }
 
-            console.log("Access token:", token);
+            console.log("Access token:", response);
             resolve();
         });
     });

@@ -6,7 +6,7 @@
   "permissions": ["tabs", "scripting", "identity", "identity.email"],
   "oauth2": {
     "client_id": "580688879697-nac2f20e4gbrnjpjdnlnvhn2hskni300.apps.googleusercontent.com",
-    "scopes": ["email"]
+    "scopes": ["email", "profile", "openid"]
   },
   "action": {
     "default_popup": "index.html"

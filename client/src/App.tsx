@@ -1,5 +1,5 @@
-import GenerateCover from "./features/generateCover";
+import MainPage from "./features/mainPage";
 
 export default function App() {
-  return <GenerateCover />;
+  return <MainPage />;
 }
