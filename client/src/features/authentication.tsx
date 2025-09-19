@@ -1,21 +1,21 @@
-import { requestPageHTML } from "../utils/contentListeners";
+//features/authentication.tsx
+import { loginWithGoogle } from "../utils/contentListeners";
 
-export default function MainPage() {
-  const handleScrape = async () => {
+export default function Authentication() {
+  const handleLogin = async () => {
     try {
-      const payload = await requestPageHTML();
+      await loginWithGoogle();
     } catch (err) {
       console.error(err);
     }
   };
-
   return (
     <div className="p-4 w-80 bg-white">
       <button
-        onClick={handleScrape}
+        onClick={handleLogin}
         className="bg-gray-200 hover:bg-gray-300 text-black font-semibold p-2 rounded w-full mb-2 transition"
       >
-        Scrape info now
+        Login with Google
       </button>
     </div>
   );

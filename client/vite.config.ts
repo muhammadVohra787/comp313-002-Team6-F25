@@ -18,15 +18,30 @@ export default defineConfig({
       output: {
         entryFileNames: (chunk) => {
           if (chunk.name === 'contentScript') return 'contentScript.js';
-          if (chunk.name === "background") return 'background.js'
+          if (chunk.name === 'background') return 'background.js';
           return 'assets/[name]-[hash].js';
         },
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash][extname]',
+        format: 'esm',
+        globals: {
+          'react': 'React',
+          'react-dom': 'ReactDOM'
+        }
       },
     },
+  },
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url))
+    }
   },
   server: {
     watch: {
       usePolling: true,
     },
   },
+  optimizeDeps: {
+    include: ['react', 'react-dom']
+  }
 });
