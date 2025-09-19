@@ -90,13 +90,9 @@ def init_auth_routes(app):
         except Exception as e:
             return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
 
-    @app.route("/api/auth/is-valid-token", methods=["POST"])
+    @app.route("/api/auth/is-valid-token", methods=["GET"])
     def is_valid_token():
-        data = request.get_json()
-        if not data or 'token' not in data:
-            return jsonify({"valid": False, "error": "Token is required"}), 400
-            
-        token = data.get("token")
+        token = request.headers.get("Authorization")
         if not token:
             return jsonify({"valid": False, "error": "Token cannot be empty"}), 400
             

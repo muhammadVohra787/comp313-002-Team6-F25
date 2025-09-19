@@ -6,7 +6,7 @@ async function getToken() {
     return (await window.JobMateAuth?.getAuthData())?.auth?.token;
 }
 
-async function apiGet(endpoint: string) {
+async function getWithAuth(endpoint: string) {
     const token = await getToken();
     if (!token) throw new Error("Missing auth token");
 
@@ -24,7 +24,7 @@ async function apiGet(endpoint: string) {
     return response.json();
 }
 
-async function apiPost(endpoint: string, body: any) {
+async function postWithAuth(endpoint: string, body: any) {
     const token = await getToken();
     if (!token) throw new Error("Missing auth token");
 
@@ -43,4 +43,18 @@ async function apiPost(endpoint: string, body: any) {
     return response.json();
 }
 
-export { apiGet, apiPost };
+async function apiPost(endpoint: string, body: any) {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+        throw new Error(`POST ${endpoint} failed: ${response.status}`);
+    }
+    return response.json();
+}
+export { getWithAuth, postWithAuth, apiPost };
