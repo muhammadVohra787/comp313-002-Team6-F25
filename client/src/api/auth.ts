@@ -4,9 +4,7 @@ import { apiPost, getWithAuth } from "./base";
 
 export const authenticateGoogleToken = async (token: string) => {
     const response = await apiPost("/auth/google", { token });
-    if (window.JobMateAuth) {
-        await window.JobMateAuth.setAuthData(response.user, response.token);
-    }
+    await setAuthData(response.user, response.token);
     return response;
 };
 
@@ -21,14 +19,36 @@ export const isUserLoggedIn = async (): Promise<boolean> => {
     }
 };
 
-export const getAuthData = () => {
-    return window.JobMateAuth?.getAuthData() || Promise.resolve(null);
+export const getAuthData = async () => {
+    return await chrome.storage.local.get('auth');
 };
 
-export const setAuthData = (user: GoogleUserInfo, token: string) => {
-    return window.JobMateAuth?.setAuthData(user, token) || Promise.resolve();
+export const setAuthData = async (user: GoogleUserInfo, token: string) => {
+    await chrome.storage.local.set({ auth: { user, token } });
 };
 
-export const removeAuth = () => {
-    return window.JobMateAuth?.removeAuthData() || Promise.resolve();
+export const removeAuth = async () => {
+    await chrome.storage.local.remove('auth');
 };
+
+
+export async function loginWithGoogle(): Promise<{ token: string }> {
+    try {
+        const googleToken = await chrome.identity.getAuthToken({ interactive: true });
+        if (!googleToken || !googleToken?.token) throw new Error("No token received from Google");
+        const response = await fetch("http://localhost:5000/api/auth/google", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: googleToken?.token }),
+        });
+
+        if (!response.ok) throw new Error("Failed to authenticate with backend");
+        const { user, token } = await response.json();
+
+        await setAuthData(user, token);
+        return { token };
+    } catch (err) {
+        await removeAuth();
+        throw err;
+    }
+}

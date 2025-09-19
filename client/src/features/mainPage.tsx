@@ -1,9 +1,10 @@
-import { requestPageHTML } from "../utils/contentListeners";
+import { loginWithGoogle } from "../api/auth";
+import { getPageHTML } from "../utils/contentHelpers";
 
 export default function MainPage() {
   const handleScrape = async () => {
     try {
-      const payload = await requestPageHTML();
+      await getPageHTML();
     } catch (err) {
       console.error(err);
     }

@@ -1,9 +1,9 @@
-// apiClient.ts
+import { getAuthData } from "./auth";
+
 const API_BASE = "http://localhost:5000/api";
 
-// Helper to get stored token (adjust to your auth flow)
 async function getToken() {
-    return (await window.JobMateAuth?.getAuthData())?.auth?.token;
+    return (await getAuthData())?.auth?.token;
 }
 
 async function getWithAuth(endpoint: string) {

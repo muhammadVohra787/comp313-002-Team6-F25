@@ -11,35 +11,14 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       input: {
-        popup: fileURLToPath(new URL('index.html', import.meta.url)),
-        contentScript: fileURLToPath(new URL('src/scripts/contentScript.ts', import.meta.url)),
-        background: fileURLToPath(new URL('src/scripts/background.ts', import.meta.url))
+        background: "src/scripts/background.ts",
+        content: "src/scripts/contentScript.ts",
+        popup: "index.html"
       },
       output: {
-        entryFileNames: (chunk) => {
-          if (chunk.name === 'contentScript') return 'contentScript.js';
-          if (chunk.name === 'background') return 'background.js';
-          return 'assets/[name]-[hash].js';
-        },
-        chunkFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash][extname]',
-        format: 'esm',
-        globals: {
-          'react': 'React',
-          'react-dom': 'ReactDOM'
-        }
-      },
-    },
-  },
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+        entryFileNames: "[name].js"
+      }
     }
-  },
-  server: {
-    watch: {
-      usePolling: true,
-    },
   },
   optimizeDeps: {
     include: ['react', 'react-dom']
