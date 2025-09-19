@@ -17,6 +17,7 @@ export async function getPageHTML(): Promise<string> {
                     }
                     if (response?.success) {
                         const result = await postWithAuth("/cover-letter", response?.payload);
+                        console.log(result)
                         resolve(result.html);
                     }
                     else reject(new Error(response?.error || "Scraping failed"));

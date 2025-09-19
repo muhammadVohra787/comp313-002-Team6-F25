@@ -3,12 +3,9 @@ import { getAuthData } from "../api/auth";
 import { loginWithGoogle } from "../api/auth";
 import React from "react";
 export default function SignInPage() {
-  const [isLoggedIn, setIsLoggedIn] = React.useState(false);
   const handleLogin = async () => {
     try {
       await loginWithGoogle();
-      await getAuthData();
-      setIsLoggedIn(true);
     } catch (err) {
       console.error(err);
     }

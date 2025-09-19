@@ -9,7 +9,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       try {
         const bodyElement = document.body;
         const payload: JobDescription = buildPayload(window.location.href, bodyElement);
-        sendResponse({ success: true, payload }); // Only sends the scraped data back
+        sendResponse({ success: true, payload });
       } catch (err) {
         sendResponse({ success: false, error: err instanceof Error ? err.message : "Unknown error" });
       }
