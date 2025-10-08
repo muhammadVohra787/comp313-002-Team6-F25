@@ -19,8 +19,6 @@ export default function SignInPage() {
       const { user, token } = response;
 
       await setAuthData(user, token);
-
-      return { token };
     } catch (err) {
       await removeAuth();
       throw err;

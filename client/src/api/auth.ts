@@ -2,12 +2,6 @@
 import { GoogleUserInfo } from "../models/userModel";
 import { apiPost } from "./base";
 
-export const authenticateGoogleToken = async (token: string) => {
-    const response = await apiPost("/auth/google", { token });
-    await setAuthData(response.user, response.token);
-    return response;
-};
-
 export const getAuthData = async () => {
     return await chrome.storage.local.get('auth');
 };
