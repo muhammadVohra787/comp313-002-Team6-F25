@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import SignInPage from "./features/signInPage";
 import MainPage from "./features/mainPage";
 import { getWithAuth } from "./api/base";
+import { CircularProgress } from "@mui/material";
 
 export default function App() {
   const [user, setUser] = useState<boolean | null>(null);
@@ -39,16 +40,17 @@ export default function App() {
 
   if (user === null) {
     return (
-      <div className="w-80 bg-white p-4 text-center">
-        <p>Loading...</p>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <CircularProgress />
       </div>
     );
   }
 
-  return (
-    <div className="w-80 bg-white">
-      <p>User is logged in: {user ? "Yes" : "No"}</p>
-      {user ? <MainPage /> : <SignInPage />}
-    </div>
-  );
+  return <div>{user ? <MainPage /> : <SignInPage />}</div>;
 }
