@@ -26,13 +26,8 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="p-4 w-80 bg-white">
-      <button
-        onClick={handleLogin}
-        className="bg-gray-200 hover:bg-gray-300 text-black font-semibold p-2 rounded w-full mb-2 transition"
-      >
-        Login with Google
-      </button>
+    <div>
+      <button onClick={handleLogin}>Login with Google</button>
     </div>
   );
 }

@@ -1,8 +1,22 @@
 import { postWithAuth } from "../api/base";
+import Navbar from "../components/navbar";
+import { useState } from "react";
 
 export default function MainPage() {
+  const [active, setActive] = useState<string>("home");
+  const [attentionItems, setAttentionItems] = useState<{
+    [key: string]: boolean;
+  }>({
+    home: false,
+    history: false,
+    profile: false,
+  });
+
   const handleScrape = async () => {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
     if (!tab?.id) throw new Error("No active tab found");
 
     return new Promise((resolve, reject) => {
@@ -15,7 +29,10 @@ export default function MainPage() {
           }
           if (response?.success) {
             try {
-              const result = await postWithAuth("/cover-letter", response.payload);
+              const result = await postWithAuth(
+                "/cover-letter",
+                response.payload
+              );
               console.log(result);
               resolve(result.html);
             } catch (error) {
@@ -29,14 +46,39 @@ export default function MainPage() {
     });
   };
 
+  const handleNavbarClick = (id: string) => {
+    setActive(id);
+  };
+
+  const setAttentionItem = (id: string) => {
+    setAttentionItems((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  // To be used when we want to switch pages
+  // const renderPage = () => {
+  //   switch (active) {
+  //     case "home":
+  //       return <Home />;
+  //     case "history":
+  //       return <History />;
+  //     case "profile":
+  //       return <Profile />;
+  //     default:
+  //       return <Home />;
+  //   }
+  // };
+
   return (
-    <div className="p-4 w-80 bg-white">
-      <button
-        onClick={handleScrape}
-        className="bg-gray-200 hover:bg-gray-300 text-black font-semibold p-2 rounded w-full mb-2 transition"
-      >
-        Scrape info now
-      </button>
+    <div>
+      <Navbar
+        active={active}
+        attentionItems={attentionItems}
+        onClick={handleNavbarClick}
+      />
+      <button onClick={handleScrape}>Scrape info now</button>
     </div>
   );
 }
