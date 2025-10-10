@@ -1,17 +1,6 @@
 import { postWithAuth } from "../api/base";
-import Navbar from "../components/navbar";
-import { useState } from "react";
 
 export default function MainPage() {
-  const [active, setActive] = useState<string>("home");
-  const [attentionItems, setAttentionItems] = useState<{
-    [key: string]: boolean;
-  }>({
-    home: false,
-    history: false,
-    profile: false,
-  });
-
   const handleScrape = async () => {
     const [tab] = await chrome.tabs.query({
       active: true,
@@ -46,38 +35,8 @@ export default function MainPage() {
     });
   };
 
-  const handleNavbarClick = (id: string) => {
-    setActive(id);
-  };
-
-  const setAttentionItem = (id: string) => {
-    setAttentionItems((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  };
-
-  // To be used when we want to switch pages
-  // const renderPage = () => {
-  //   switch (active) {
-  //     case "home":
-  //       return <Home />;
-  //     case "history":
-  //       return <History />;
-  //     case "profile":
-  //       return <Profile />;
-  //     default:
-  //       return <Home />;
-  //   }
-  // };
-
   return (
     <div>
-      <Navbar
-        active={active}
-        attentionItems={attentionItems}
-        onClick={handleNavbarClick}
-      />
       <button onClick={handleScrape}>Scrape info now</button>
     </div>
   );

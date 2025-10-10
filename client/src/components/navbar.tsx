@@ -1,24 +1,18 @@
 import React from "react";
 import { Box, Tooltip, IconButton, Badge } from "@mui/material";
-import HomeIcon from "@mui/icons-material/Home";
-import HistoryIcon from "@mui/icons-material/History";
-import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import ErrorIcon from "@mui/icons-material/Error";
-
-const navItems = [
-  { id: "home", label: "Homepage", icon: <HomeIcon /> },
-  { id: "history", label: "History", icon: <HistoryIcon /> },
-  { id: "profile", label: "Profile", icon: <AccountCircleIcon /> },
-];
+import { NavItem } from "../types";
 
 interface NavbarProps {
+  navItems: NavItem[];
   active: string;
   attentionItems: { [key: string]: boolean };
   onClick: (id: string) => void;
+  disabled?: boolean;
 }
 
 const Navbar = (props: NavbarProps) => {
-  const { active, attentionItems, onClick } = props;
+  const { navItems, active, attentionItems, onClick, disabled } = props;
   return (
     <Box
       sx={{
@@ -30,12 +24,14 @@ const Navbar = (props: NavbarProps) => {
         padding: "6px 4px",
         boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
         width: "100%",
+        mb: 2,
       }}
     >
       {navItems.map((item) => (
         <Tooltip key={item.id} title={item.label} placement="top">
           <IconButton
             onClick={() => onClick(item.id)}
+            disabled={disabled}
             sx={{
               color: active === item.id ? "primary.main" : "text.secondary",
               position: "relative",
