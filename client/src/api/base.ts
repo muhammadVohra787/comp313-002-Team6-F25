@@ -58,5 +58,24 @@ async function apiPost(endpoint: string, body: any) {
     return response.json();
 }
 
+async function multipartPostWithAuth(endpoint: string, body: any) {
+    const token = await getToken();
+    if (!token) throw new Error("Missing auth token");
 
-export { getWithAuth, postWithAuth, apiPost };
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+        method: "POST",
+        headers: {
+            // content type will be set by the browser
+            Authorization: `Bearer ${token}`,
+        },
+        body: body,
+    });
+
+    if (!response.ok) {
+        throw new Error(`POST ${endpoint} failed: ${response.status}`);
+    }
+    return response.json();
+}
+
+
+export { getWithAuth, postWithAuth, apiPost, multipartPostWithAuth };

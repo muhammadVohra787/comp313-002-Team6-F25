@@ -2,23 +2,28 @@
 import { removeAuth, setAuthData } from "../api/auth";
 import React from "react";
 import { apiPost } from "../api/base";
+import { AuthResponse } from "../models/userModel";
 
-export default function SignInPage() {
+export default function SignInPage({
+  setAttentionItem,
+}: {
+  setAttentionItem: (id: string, attention: boolean) => void;
+}) {
   const handleLogin = async () => {
     try {
       const googleToken = await chrome.identity.getAuthToken({
         interactive: true,
       });
+      console.log(googleToken);
       if (!googleToken || !googleToken?.token)
         throw new Error("No token received from Google");
 
-      const response = await apiPost("/auth/google", {
+      const response: AuthResponse = await apiPost("/auth/google", {
         token: googleToken?.token,
       });
 
-      const { user, token } = response;
-
-      await setAuthData(user, token);
+      await setAuthData(response);
+      setAttentionItem("profile", response.user.attention_needed);
     } catch (err) {
       await removeAuth();
       throw err;

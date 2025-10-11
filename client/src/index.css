@@ -1,4 +1,17 @@
-body {
-  height: 500px;
-  width: 300px;
+#root {
+  display: flex;
+  overflow: hidden;
+  height: 550px;
+  width: 500px;
 }
+
+/* .MuiInputLabel-root,
+.MuiInputLabel-sizeSmall {
+  font-size: 0.75rem !important;
+}
+
+.MuiInputBase-input,
+.MuiOutlinedInput-input,
+.MuiInputBase-inputSizeSmall {
+  font-size: 0.8rem !important;
+} */

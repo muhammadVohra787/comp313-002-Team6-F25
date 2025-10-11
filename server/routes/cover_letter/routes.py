@@ -10,12 +10,12 @@ __all__ = ['validate_token', 'JWT_SECRET', 'JWT_ALGORITHM']
 def init_cover_letter_routes(app):
     @app.route('/api/cover-letter', methods=['POST'])
     def cover_letter():
-        token = request.headers.get("Authorization")
-        if not token:
-            return jsonify({"error": "Token is required"}), 400
-            
+        user_id = None 
         try:
-            validate_token(token.removeprefix("Bearer ").strip())
+            token = request.headers.get("Authorization")
+            auth_token = validate_token(token.removeprefix("Bearer ").strip())
+            user_id = auth_token["id"]
+
         except Exception as e:
             return jsonify({"error": str(e)}), 401
             
@@ -24,5 +24,6 @@ def init_cover_letter_routes(app):
         clean_job_description = trim_html(raw_description)
         return jsonify({
             'clean_job_description': clean_job_description,
-            'url': data.get('url')
+            'url': data.get('url'),
+            'user_id': user_id
         }), 200

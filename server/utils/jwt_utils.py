@@ -47,15 +47,22 @@ def token_required(f):
         return f(current_user, *args, **kwargs)
     return decorated
 
-def validate_token(token: str) -> None:
+def validate_token(token: str) -> dict:
+    """
+    Validate a JWT token and return its payload.
+
+    Raises:
+        Exception: if the token is expired, invalid, or cannot be decoded.
+    """
     try:
-        jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        # payload now contains 'id', 'sub', 'email', etc.
+        if not payload.get("id"):
+            raise Exception("Invalid token")
+        return payload
     except jwt.ExpiredSignatureError:
-        print("Token has expired")
         raise Exception("Token has expired")
-    except jwt.InvalidTokenError as e:
-        print(f"Invalid token: {str(e)}")
+    except jwt.InvalidTokenError:
         raise Exception("Invalid token")
     except Exception as e:
-        print(f"Token validation error: {str(e)}")
-        raise Exception("Token validation failed")
+        raise Exception(f"Token validation failed: {str(e)}")

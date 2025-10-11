@@ -2,12 +2,14 @@ import React, { useState, useEffect } from "react";
 import SignInPage from "./features/signInPage";
 import MainPage from "./features/mainPage";
 import { getWithAuth } from "./api/base";
-import { CircularProgress } from "@mui/material";
+import { Box, CircularProgress } from "@mui/material";
 import Navbar from "./components/navbar";
 import HomeIcon from "@mui/icons-material/Home";
 import HistoryIcon from "@mui/icons-material/History";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { NavItem } from "./types";
+import Profile from "./features/profile";
+import CenteredCircularProgress from "./components/centeredCircularProgress";
 
 export default function App() {
   const [user, setUser] = useState<boolean | null>(null);
@@ -61,28 +63,16 @@ export default function App() {
     };
   }, []);
 
-  if (user === null) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <CircularProgress />
-      </div>
-    );
-  }
+  if (user === null) return <CenteredCircularProgress />;
 
   const handleNavbarClick = (id: string) => {
     setActive(id);
   };
 
-  const setAttentionItem = (id: string) => {
+  const setAttentionItem = (id: string, attention: boolean) => {
     setAttentionItems((prev) => ({
       ...prev,
-      [id]: !prev[id],
+      [id]: attention,
     }));
   };
 
@@ -93,14 +83,14 @@ export default function App() {
       case "history":
         return <div>History</div>;
       case "profile":
-        return <div>Profile</div>;
+        return <Profile />;
       default:
         return <MainPage />;
     }
   };
 
   return (
-    <div>
+    <Box sx={{ overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <Navbar
         navItems={navItems}
         active={active}
@@ -108,7 +98,13 @@ export default function App() {
         onClick={handleNavbarClick}
         disabled={navDisabled}
       />
-      {user ? renderPage() : <SignInPage />}
-    </div>
+      <Box sx={{ flex: 2, overflow: "auto" }}>
+        {user ? (
+          renderPage()
+        ) : (
+          <SignInPage setAttentionItem={setAttentionItem} />
+        )}
+      </Box>
+    </Box>
   );
 }
