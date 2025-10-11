@@ -24,72 +24,67 @@ def init_auth_routes(app):
             return jsonify({"error": "No token provided"}), 400
 
         try:
+            # 1. Verify token with Google
             r = requests.get(
                 GOOGLE_USERINFO_URL,
                 headers={"Authorization": f"Bearer {google_token}"},
                 timeout=10
             )
-            
             if r.status_code != 200:
                 return jsonify({"error": "Invalid or expired token"}), 401
-
+            print(r.json())
             google_user = r.json()
             db = get_db()
-            
-            user = db.users.find_one({"id": google_user["id"]})
-            
+
+            # 2. Check if user exists by google_id
+            user = db.users.find_one({"google_id": google_user["id"]})
+
+            # 3. Create new user if needed
             if not user:
                 user_data = {
-                    "id": google_user["id"],
+                    "google_id": google_user["id"],  # store provider-specific ID
                     "email": google_user["email"],
                     "name": google_user["name"],
                     "picture": google_user.get("picture", ""),
-                    "created_at": datetime.utcnow(),
-                    "last_login": datetime.utcnow(),
-                    "provider": "google"
+                    "city": None,
+                    "country": None,
+                    "postal_code": None,
+                    "personal_prompt": None,
+                    "attention_needed": True,
                 }
                 result = db.users.insert_one(user_data)
                 user_data["_id"] = str(result.inserted_id)
                 user = user_data
             else:
-                db.users.update_one(
-                    {"_id": user["_id"]},
-                    {
-                        "$set": {
-                            "last_login": datetime.utcnow(),
-                            "name": google_user["name"],
-                            "picture": google_user.get("picture", "")
-                        }
-                    }
-                )
                 user["_id"] = str(user["_id"])
-                user["name"] = google_user["name"]
-                user["picture"] = google_user.get("picture", "")
 
+            # 4. Generate token using MongoDB _id
             token_data = {
                 "id": str(user["_id"]),
-                "sub": user["id"], 
+                "sub": str(user["_id"]),
                 "email": user["email"],
                 "name": user["name"]
             }
             token = create_access_token(token_data)
 
+            # 5. Build response
+            user_response = {
+                **user,
+                "id": user["_id"],       
+                "google_id": user.get("google_id")
+            }
+            user_response.pop("_id", None)
+
             return jsonify({
-                "user": {
-                    "id": user["_id"],
-                    "id": user["id"],
-                    "email": user["email"],
-                    "name": user["name"],
-                    "picture": user.get("picture", "")
-                },
+                "user": user_response,
                 "token": token
             })
-            
+
         except requests.RequestException as e:
             return jsonify({"error": f"Error authenticating with Google: {str(e)}"}), 500
         except Exception as e:
             return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
-
+    
     @app.route("/api/auth/is-valid-token", methods=["GET"])
     def is_valid_token():
         token = request.headers.get("Authorization")

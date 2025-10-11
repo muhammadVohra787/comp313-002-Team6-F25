@@ -23,8 +23,9 @@ const Navbar = (props: NavbarProps) => {
         borderRadius: "12px",
         padding: "6px 4px",
         boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-        width: "100%",
+        width: "100vw",
         mb: 2,
+        flex: "0.1",
       }}
     >
       {navItems.map((item) => (
