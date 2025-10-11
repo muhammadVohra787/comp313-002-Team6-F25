@@ -8,7 +8,11 @@ export interface User {
     picture: string;
     personal_prompt: string | null;
     attention_needed: boolean;
-    resume: string | null;
+    resume: {
+        file_name: string;
+        text: string;
+        id: string;
+    } | null;
     city: string | null;
     country: string | null;
     postal_code: string | null;

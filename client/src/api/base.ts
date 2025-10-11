@@ -77,5 +77,21 @@ async function multipartPostWithAuth(endpoint: string, body: any) {
     return response.json();
 }
 
+async function multipartGetWithAuth(endpoint: string) {
+    const token = await getToken();
+    if (!token) throw new Error("Missing auth token");
 
-export { getWithAuth, postWithAuth, apiPost, multipartPostWithAuth };
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+        method: "GET",
+        headers: {
+            // content type will be set by the browser
+            Authorization: `Bearer ${token}`,
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error(`GET ${endpoint} failed: ${response.status}`);
+    }
+    return response
+}
+export { getWithAuth, postWithAuth, apiPost, multipartPostWithAuth, multipartGetWithAuth };

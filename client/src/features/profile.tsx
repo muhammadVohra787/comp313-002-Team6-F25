@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { User } from "../models/userModel";
-import { getWithAuth, multipartPostWithAuth, postWithAuth } from "../api/base";
+import {
+  getWithAuth,
+  multipartGetWithAuth,
+  multipartPostWithAuth,
+  postWithAuth,
+} from "../api/base";
 import {
   Box,
   TextField,
@@ -11,18 +16,21 @@ import {
   Divider,
 } from "@mui/material";
 import CenteredCircularProgress from "../components/centeredCircularProgress";
+import ResumeUploadModal from "../components/resumeUploadModal";
+import { SetAttentionItem } from "../types";
+import DownloadIcon from "@mui/icons-material/Download";
 
-export default function Profile() {
+export default function Profile({
+  setAttentionItem,
+}: {
+  setAttentionItem: SetAttentionItem;
+}) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState<Partial<User>>({});
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
-  const allowedExtensions = ["pdf", "doc", "docx", "txt"];
-  const [resumeFile, setResumeFile] = useState<File | null>(null);
-  const [resumeText, setResumeText] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
+  const [open, setOpen] = useState(false);
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -31,13 +39,12 @@ export default function Profile() {
 
         setUser(response.user);
         setFormData(response.user);
-
+        setAttentionItem("profile", response?.user?.attention_needed);
         // TODO: get and show the resume on file.
         // setResumeFile(response?.user?.resume || null);
         // setResumeText(response?.user?.resume || "Resume is required");
       } catch (error) {
         console.error("Error fetching user:", error);
-        return <p>Something went wrong, {error}</p>;
       } finally {
         setLoading(false);
       }
@@ -58,31 +65,11 @@ export default function Profile() {
 
     try {
       setSaving(true);
-
-      // Use FormData for mixed text + file
-      const data = new FormData();
-
-      // Append all text fields (like name, email, city, etc.)
-      for (const key in formData) {
-        const value = formData[key];
-        if (value !== undefined && value !== null) {
-          data.append(key, value);
-        }
-      }
-
-      // Append the resume file (if any)
-      if (resumeFile) {
-        data.append("file", resumeFile); // ✅ backend expects "file"
-      }
-
-      // Send request (DO NOT manually set Content-Type)
-      const response = await multipartPostWithAuth("/profile", data);
-
-      // If backend returns updated user
+      const response = await postWithAuth("/profile", formData);
       if (response?.user) {
         setUser(response.user);
       }
-
+      setAttentionItem("profile", response?.user?.attention_needed);
       setHasChanges(false);
     } catch (err) {
       console.error("Error saving profile:", err);
@@ -95,30 +82,48 @@ export default function Profile() {
     if (user) {
       setFormData(user);
       setHasChanges(false);
-      setResumeFile(null);
-      setResumeText(null);
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setError(null);
-    setHasChanges(true);
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const ext = file.name.split(".").pop()?.toLowerCase();
-      if (!ext || !allowedExtensions.includes(ext)) {
-        setError("Only PDF, Word, or TXT files are allowed.");
-        return;
+  const handleUpload = async (file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await multipartPostWithAuth("/profile/resume", formData);
+      if (response?.user) {
+        setUser(response.user);
       }
+      setAttentionItem("profile", response?.user?.attention_needed);
+    } catch (err) {
+      console.error("Error uploading resume:", err);
+    } finally {
+      setOpen(false);
+    }
+  };
 
-      setResumeFile(file);
+  const handleResumeDownload = async () => {
+    try {
+      const response = await multipartGetWithAuth("/profile/resume");
+      // Convert to blob
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const text = event.target?.result as string;
-        setResumeText(text);
-      };
-      reader.readAsText(file);
+      // Create a temporary link to trigger download
+      const a = document.createElement("a");
+      a.href = url;
+      // Use the filename from headers if available, fallback to generic
+      const disposition = response.headers.get("content-disposition");
+      let filename = "resume";
+      if (disposition && disposition.includes("filename=")) {
+        filename = disposition.split("filename=")[1].replace(/"/g, "");
+      }
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Error downloading resume:", err);
     }
   };
 
@@ -138,7 +143,55 @@ export default function Profile() {
       <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
         Profile Information
       </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
+        {user?.resume ? (
+          <a
+            href="#"
+            onClick={handleResumeDownload}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              fontSize: 16,
+              fontWeight: 500,
+              color: "#1976d2",
+              textDecoration: "underline",
+            }}
+          >
+            {user.resume.file_name}
+          </a>
+        ) : (
+          <Typography
+            variant="subtitle1"
+            sx={{ fontWeight: 500, color: "error.main", fontSize: 16 }}
+          >
+            You must upload a resume
+          </Typography>
+        )}
 
+        {/* Manage link styled same way */}
+        <a
+          href="#"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            fontSize: 16,
+            fontWeight: 500,
+            color: "#1976d2",
+            textDecoration: "underline",
+          }}
+          onClick={() => setOpen(true)}
+        >
+          Manage
+        </a>
+      </Box>
+
+      <ResumeUploadModal
+        open={open}
+        onClose={() => setOpen(false)}
+        onUpload={handleUpload}
+      />
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
         <TextField
           label="Name"
@@ -190,41 +243,7 @@ export default function Profile() {
           onChange={(e) => handleChange("personal_prompt", e.target.value)}
         />
       </Box>
-
-      <Divider sx={{ my: 3 }} />
-
-      <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 500 }}>
-        Resume Upload
-      </Typography>
-
-      <Box sx={{ mb: 2 }}>
-        <Button
-          variant="contained"
-          component="label"
-          fullWidth
-          size="small"
-          color="primary"
-        >
-          {resumeFile ? "Replace Resume" : "Upload Resume"}
-          <input type="file" hidden onChange={handleFileChange} />
-        </Button>
-
-        <Typography
-          variant="caption"
-          sx={{ display: "block", mt: 1 }}
-          color={error ? "error" : "text.secondary"}
-        >
-          {error
-            ? error
-            : resumeFile
-            ? `Selected: ${resumeFile.name}`
-            : "Upload a PDF, Word, or TXT file"}
-        </Typography>
-      </Box>
-
-      <Divider sx={{ my: 2 }} />
-
-      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
+      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mt: 1 }}>
         <Button
           variant="outlined"
           color="error"

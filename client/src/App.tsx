@@ -83,7 +83,7 @@ export default function App() {
       case "history":
         return <div>History</div>;
       case "profile":
-        return <Profile />;
+        return <Profile setAttentionItem={setAttentionItem} />;
       default:
         return <MainPage />;
     }

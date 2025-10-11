@@ -3,11 +3,12 @@ import { removeAuth, setAuthData } from "../api/auth";
 import React from "react";
 import { apiPost } from "../api/base";
 import { AuthResponse } from "../models/userModel";
+import { SetAttentionItem } from "../types";
 
 export default function SignInPage({
   setAttentionItem,
 }: {
-  setAttentionItem: (id: string, attention: boolean) => void;
+  setAttentionItem: SetAttentionItem;
 }) {
   const handleLogin = async () => {
     try {
