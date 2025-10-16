@@ -5,6 +5,7 @@ import { fileURLToPath, URL } from 'node:url';
 
 export default defineConfig({
   plugins: [react()],
+  base: '',
   build: {
     outDir: "dist",
     emptyOutDir: true,
