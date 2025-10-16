@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Jobmate AI",
+  "version": "1.0",
+  "description": "AI-powered job cover letter generator",
+  "permissions": ["tabs", "scripting", "identity", "storage"],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjHxHEJvz2ObbEJhutUTYYlmscFqxdJsqRUpyI90DM4xstkQMYgT/Ny8GoyW9Otm5enUsxof6r7uuJ//tq8RwuhhI20EnjhRQ3B+dn6iV4Sga7NzV8ocLQp+GL8ZSif06T0HYgwO5OeN9svz/ZzK0lOUtXLZOwDRqJUpqZEDLJuefAJ8WvV+v7RUM/Ug0HsxfIT9HFH/f3bq9vgI3B1fMHseF9vL9H1z+PNXeZR9WaH4H1KN75WSl+MAQyWkfx3yMMW1EcJHj0Dw1Bw+xA6dnJ02cTDumaW4iXP7K0Cfr2uoF1h8wmfK66CjY+BFpL1o3ry5H+zygrnSTvHmwXcanpQIDAQAB",
+  "oauth2": {
+    "client_id": "580688879697-nac2f20e4gbrnjpjdnlnvhn2hskni300.apps.googleusercontent.com",
+    "scopes": ["email", "profile", "openid"]
+  },
+  "action": {
+    "default_popup": "index.html"
+  },
+  "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  }
+}
