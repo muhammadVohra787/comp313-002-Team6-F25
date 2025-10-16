@@ -53,7 +53,19 @@ async function apiPost(endpoint: string, body: any) {
     });
 
     if (!response.ok) {
-        throw new Error(`POST ${endpoint} failed: ${response.status}`);
+        let errorMessage = `POST ${endpoint} failed: ${response.status}`;
+        try {
+            const data = await response.json();
+            if (data?.error) {
+                errorMessage = data.error;
+            }
+        } catch (_) {
+            const text = await response.text();
+            if (text) {
+                errorMessage = text;
+            }
+        }
+        throw new Error(errorMessage);
     }
     return response.json();
 }
