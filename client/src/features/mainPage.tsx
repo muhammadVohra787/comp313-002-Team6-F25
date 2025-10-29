@@ -9,6 +9,13 @@ import {
   Paper,
   Stack,
   Typography,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
 import DOMPurify from "dompurify";
 import WorkOutlineIcon from "@mui/icons-material/WorkOutline";
@@ -17,6 +24,8 @@ import PlaceIcon from "@mui/icons-material/Place";
 import PublicIcon from "@mui/icons-material/Public";
 import LinkIcon from "@mui/icons-material/Link";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { postWithAuth } from "../api/base";
 import { JobDescription } from "../models/coverLetter";
 
@@ -56,12 +65,22 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
   const [scrapedData, setScrapedData] = useState<JobDescription | null>(null);
   const [coverLetterHtml, setCoverLetterHtml] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
+  const [generatingCoverLetter, setGeneratingCoverLetter] =
+    useState<boolean>(false);
   const [error, setError] = useState<string>("");
+  const [version, setVersion] = useState<number>(0);
+
+  // Cover letter customization options
+  const [tone, setTone] = useState<string>("professional");
+  const [userPrompt, setUserPrompt] = useState<string>("");
+  const [copySuccess, setCopySuccess] = useState<boolean>(false);
 
   const handleScrape = async () => {
     setLoading(true);
     setError("");
     setCoverLetterHtml("");
+    setVersion(0);
+    setUserPrompt("");
 
     try {
       const [tab] = await chrome.tabs.query({
@@ -83,15 +102,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
               setScrapedData(payload);
 
               if (isAuthenticated) {
-                try {
-                  const result = await postWithAuth("/cover-letter", payload);
-                  setCoverLetterHtml(result?.html || "");
-                } catch (err: any) {
-                  setError(
-                    err?.message ||
-                      "Failed to generate cover letter. Please try again."
-                  );
-                }
+                await generateCoverLetter(payload, tone, "");
               }
 
               resolve();
@@ -106,6 +117,48 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const generateCoverLetter = async (
+    jobData: JobDescription,
+    selectedTone: string,
+    customPrompt: string
+  ) => {
+    setGeneratingCoverLetter(true);
+    setError("");
+
+    try {
+      const payload = {
+        ...jobData,
+        tone: selectedTone,
+        userPrompt: customPrompt,
+      };
+
+      const result = await postWithAuth("/cover-letter", payload);
+      setCoverLetterHtml(result?.html || "");
+      setVersion((v) => v + 1);
+    } catch (err: any) {
+      setError(
+        err?.message || "Failed to generate cover letter. Please try again."
+      );
+    } finally {
+      setGeneratingCoverLetter(false);
+    }
+  };
+
+  const handleRegenerate = () => {
+    if (scrapedData) {
+      generateCoverLetter(scrapedData, tone, userPrompt);
+    }
+  };
+
+  const handleCopyToClipboard = () => {
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = DOMPurify.sanitize(coverLetterHtml);
+    const text = tempDiv.innerText;
+    navigator.clipboard.writeText(text);
+    setCopySuccess(true);
+    setTimeout(() => setCopySuccess(false), 2000);
   };
 
   const renderDescription = (html: string) => {
@@ -133,13 +186,70 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
             "linear-gradient(135deg, rgba(237,242,255,0.85), rgba(232,244,253,0.9))",
         }}
       >
-        <CardContent sx={{ p: 3, display: "flex", flexDirection: "column", gap: 2 }}>
-          <Stack direction="row" alignItems="center" spacing={1.5}>
-            <AutoAwesomeIcon color="primary" />
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              Generated Cover Letter
-            </Typography>
+        <CardContent
+          sx={{ p: 3, display: "flex", flexDirection: "column", gap: 2 }}
+        >
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+          >
+            <Stack direction="row" alignItems="center" spacing={1.5}>
+              <AutoAwesomeIcon color="primary" />
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                Generated Cover Letter
+                {version > 0 && (
+                  <Chip
+                    label={`v${version}`}
+                    size="small"
+                    sx={{ ml: 1, height: 20, fontSize: "0.7rem" }}
+                  />
+                )}
+              </Typography>
+            </Stack>
+            {coverLetterHtml && (
+              <Tooltip title={copySuccess ? "Copied!" : "Copy to clipboard"}>
+                <IconButton size="small" onClick={handleCopyToClipboard}>
+                  <ContentCopyIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
           </Stack>
+
+          {/* Customization Options */}
+          <Stack direction="row" spacing={2} alignItems="center">
+            <FormControl size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>Tone</InputLabel>
+              <Select
+                value={tone}
+                label="Tone"
+                onChange={(e) => setTone(e.target.value)}
+              >
+                <MenuItem value="professional">Professional</MenuItem>
+                <MenuItem value="enthusiastic">Enthusiastic</MenuItem>
+                <MenuItem value="casual">Casual</MenuItem>
+                <MenuItem value="formal">Formal</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              size="small"
+              fullWidth
+              placeholder="Additional instructions (optional)..."
+              value={userPrompt}
+              onChange={(e) => setUserPrompt(e.target.value)}
+            />
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<RefreshIcon />}
+              onClick={handleRegenerate}
+              disabled={generatingCoverLetter}
+              sx={{ textTransform: "none", whiteSpace: "nowrap" }}
+            >
+              {generatingCoverLetter ? "Generating..." : "Regenerate"}
+            </Button>
+          </Stack>
+
           {coverLetterHtml ? (
             <Paper
               elevation={0}
@@ -159,7 +269,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
             </Paper>
           ) : (
             <Typography variant="body2" color="text.secondary">
-              {loading
+              {generatingCoverLetter || loading
                 ? "Generating your tailored cover letter..."
                 : "Scrape a job and stay signed in to generate a cover letter."}
             </Typography>
@@ -223,8 +333,8 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
 
       {!isAuthenticated && (
         <Alert severity="info" sx={{ borderRadius: 2 }}>
-          Log in with Google to generate a personalized cover letter. You can still
-          review the scraped job details while logged out.
+          Log in with Google to generate a personalized cover letter. You can
+          still review the scraped job details while logged out.
         </Alert>
       )}
 
@@ -245,13 +355,16 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
           flexShrink: 0,
         }}
       >
-        <CardContent sx={{ p: 3, display: "flex", flexDirection: "column", gap: 3 }}>
+        <CardContent
+          sx={{ p: 3, display: "flex", flexDirection: "column", gap: 3 }}
+        >
           <Box>
             <Typography variant="h6" sx={{ fontWeight: 600 }}>
               Scraped Job Information
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              We capture key information automatically so you can tailor your message.
+              We capture key information automatically so you can tailor your
+              message.
             </Typography>
           </Box>
 
@@ -284,7 +397,9 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                   </Typography>
                   <Stack direction="row" spacing={1} alignItems="center">
                     <PublicIcon color="primary" fontSize="small" />
-                    <Typography variant="body1">{scrapedData.companyName}</Typography>
+                    <Typography variant="body1">
+                      {scrapedData.companyName}
+                    </Typography>
                   </Stack>
                 </Box>
               )}
@@ -299,7 +414,9 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                   </Typography>
                   <Stack direction="row" spacing={1} alignItems="center">
                     <PlaceIcon color="primary" fontSize="small" />
-                    <Typography variant="body1">{scrapedData.location}</Typography>
+                    <Typography variant="body1">
+                      {scrapedData.location}
+                    </Typography>
                   </Stack>
                 </Box>
               )}
@@ -311,7 +428,12 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                 >
                   Source & URL
                 </Typography>
-                <Stack spacing={1} direction="row" alignItems="center" flexWrap="wrap">
+                <Stack
+                  spacing={1}
+                  direction="row"
+                  alignItems="center"
+                  flexWrap="wrap"
+                >
                   {scrapedData.source && (
                     <Chip
                       icon={<PublicIcon fontSize="small" />}
@@ -358,8 +480,9 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
               }}
             >
               <Typography variant="body2" sx={{ maxWidth: 320 }}>
-                Open a job listing (LinkedIn, Indeed, Google Jobs, etc.) and click
-                “Scrape Job Details” to populate this panel with structured insights.
+                Open a job listing (LinkedIn, Indeed, Google Jobs, etc.) and
+                click "Scrape Job Details" to populate this panel with
+                structured insights.
               </Typography>
             </Box>
           )}
