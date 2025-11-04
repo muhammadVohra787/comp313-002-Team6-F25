@@ -15,7 +15,7 @@ import {
   FormControl,
   InputLabel,
   IconButton,
-  Tooltip,
+  Tooltip
 } from "@mui/material";
 import DOMPurify from "dompurify";
 import WorkOutlineIcon from "@mui/icons-material/WorkOutline";
@@ -26,8 +26,14 @@ import LinkIcon from "@mui/icons-material/Link";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import DownloadIcon from "@mui/icons-material/Download";
 import { postWithAuth } from "../api/base";
 import { JobDescription } from "../models/coverLetter";
+// import html2pdf from "html2pdf.js";
+import { Document, Packer, Paragraph, TextRun } from "docx";
+import { saveAs } from "file-saver";
+import jsPDF from "jspdf";
+import { getAuthData } from "../api/auth";
 
 interface MainPageProps {
   isAuthenticated: boolean;
@@ -134,10 +140,23 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
         userPrompt: customPrompt,
       };
 
-      const result = await postWithAuth("/cover-letter", payload);
+      //debug
+      console.log("Sending payload to /api/cover-letter:", payload);
+      console.log("Job Description length:", payload.jobDescription?.length);
+      const authData = await getAuthData();
+      console.log("Auth token:", authData?.token);
+      
+      if (!authData?.token) {
+        throw new Error("Missing auth token — please log in again.");
+      }
+      
+      // 🔹 Pass token directly
+      const result = await postWithAuth("/cover-letter", payload, authData.token);
+      
       setCoverLetterHtml(result?.html || "");
       setVersion((v) => v + 1);
     } catch (err: any) {
+      console.error("Error during cover letter generation:", err);
       setError(
         err?.message || "Failed to generate cover letter. Please try again."
       );
@@ -152,6 +171,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
     }
   };
 
+
   const handleCopyToClipboard = () => {
     const tempDiv = document.createElement("div");
     tempDiv.innerHTML = DOMPurify.sanitize(coverLetterHtml);
@@ -160,6 +180,57 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
     setCopySuccess(true);
     setTimeout(() => setCopySuccess(false), 2000);
   };
+
+  // === Download as word (client side) ===
+
+  const handleDownloadWord = async () => {
+    if (!scrapedData || !coverLetterHtml) {
+      alert("No cover letter available to download.");
+      return;
+    }
+
+    const sanitizedHtml = DOMPurify.sanitize(coverLetterHtml);
+
+    chrome.storage.local.get(["user"], () => {
+      const dateStr = new Date().toISOString().split("T")[0];
+      const filename = `CoverLetter_${dateStr}.doc`;
+      
+    const htmlContent = `
+        <html><head>
+          <meta charset="utf-8" />
+          <style>
+            body { font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.5; }
+          </style>
+        </head><body>${DOMPurify.sanitize(coverLetterHtml)}</body></html>
+      `;
+    
+      const blob = new Blob([htmlContent], {
+        type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      });
+      saveAs(blob, filename);
+    });
+  }    
+
+  // working pdf version but its an image
+
+  // const handleDownloadPDF = () => {
+  //   const element = document.getElementById("coverLetterContainer");
+  //   if (!element) return alert("No cover letter to download.");
+
+  //   const fileName = `${scrapedData?.companyName || "Job"}_${new Date()
+  //     .toISOString()
+  //     .split("T")[0]}.pdf`;
+
+  //   const options = {
+  //     margin: 0.5,
+  //     filename: fileName,
+  //     image: { type: "jpeg" as const, quality: 0.98 },
+  //     html2canvas: { scale: 2 },
+  //     jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
+  //   };
+
+  //   html2pdf().set(options as any).from(element).save();
+  // };
 
   const renderDescription = (html: string) => {
     const sanitized = DOMPurify.sanitize(html, {
@@ -214,6 +285,21 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                 </IconButton>
               </Tooltip>
             )}
+
+            {coverLetterHtml && (
+              <Tooltip title="Download as Word (.docx)">
+                <IconButton
+                  size="small"
+                  color="primary"
+                  onClick={handleDownloadWord}
+                  sx={{ ml: 1 }}
+                >
+                  <DownloadIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+
+            )}
+
           </Stack>
 
           {/* Customization Options */}
@@ -260,6 +346,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
               }}
             >
               <Box
+                id="coverLetterContainer"
                 dangerouslySetInnerHTML={{
                   __html: DOMPurify.sanitize(coverLetterHtml, {
                     USE_PROFILES: { html: true },
