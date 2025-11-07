@@ -132,8 +132,8 @@ def _build_prompt(
 
     [Specific name if provided of the Hiring Manager, otherwise use Hiring Manager]  
     [Company Name]  
-    [Company Address if provided]  
-    [City, Province/ Country if provided]  
+    [Company Address if provided otherwise empty - no line break]  
+    [City, Province/ Country if provided otherwise use user's city/province/country (guess if not provided)]  
 
     Dear [Specific name if provided of the Hiring Manager, otherwise use Hiring Manager],
 
