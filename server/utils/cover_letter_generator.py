@@ -20,6 +20,7 @@ else:
 
 
 def generate_cover_letter(
+    user_info: dict,
     job_posting: str,
     resume: str,
     tone: str = "professional",
@@ -61,6 +62,7 @@ def generate_cover_letter(
     
     # Build the prompt
     prompt = _build_prompt(
+        user_info=user_info,
         job_posting=job_posting,
         resume=resume,
         tone=tone,
@@ -83,20 +85,21 @@ def generate_cover_letter(
 
 def _clean_response(text: str) -> str:
     """
-    Removes markdown code blocks and other artifacts from AI response.
+    Removes unwanted code fences or extra whitespace without breaking Markdown structure.
     """
-    # Remove ```html or ```HTML at the start
-    text = re.sub(r'^```html\s*\n?', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'^```\s*\n?', '', text)
+    # Remove ``` and ```markdown fences
+    text = text.replace("```markdown", "").replace("```md", "").replace("```", "")
     
-    # Remove ``` at the end
-    text = re.sub(r'\n?```\s*$', '', text)
+    # Trim leading/trailing whitespace
+    text = text.strip()
     
-    return text.strip()
+    return text
+
 
 
 def _build_prompt(
     job_posting: str,
+    user_info: dict,
     resume: str,
     tone: str,
     user_prompt: str,
@@ -104,57 +107,77 @@ def _build_prompt(
     current_date: str
 ) -> str:
     """
-    Builds the prompt for Gemini based on the parameters.
-    You can modify this function to customize how prompts are structured.
+    Builds a clean, consistent Markdown prompt for Gemini.
+    The output will always follow a fixed structure.
     """
-    
-    # Tone descriptions to guide the AI
+
     tone_guidelines = {
-        "professional": "professional, polished, and business-appropriate",
-        "enthusiastic": "energetic, passionate, and showing genuine excitement for the role",
-        "casual": "friendly, conversational, yet still respectful and appropriate",
-        "formal": "highly formal, traditional business letter style with proper etiquette"
+        "professional": "professional and polished",
+        "enthusiastic": "positive and energetic",
+        "casual": "friendly yet respectful",
+        "formal": "highly formal and traditional"
     }
-    
+
     tone_description = tone_guidelines.get(tone, "professional")
-    
-    prompt = f"""You are an expert career coach and professional writer. Write a {tone_description} cover letter tailored to the following job posting and resume.{context}
 
-CURRENT DATE: {current_date}
+    prompt = f"""
+    You are an expert career writer. Write a professional cover letter in **Markdown format** following the exact structure below. Do not change the structure, only fill in content based on the resume and job posting.
 
-JOB POSTING:
-{job_posting}
+    Use this structure exactly:
 
-RESUME:
-{resume}
+    [Full Name]
+    [City, Province/ Country (guess if not provided), Postal Code (optional)]  
+    [Only one contact: Email if available, otherwise Phone, otherwise LinkedIn]  
+    {current_date}
 
-Additional instructions from user:
-{user_prompt if user_prompt else "None"}
+    [Specific name if provided of the Hiring Manager, otherwise use Hiring Manager]  
+    [Company Name]  
+    [Company Address if provided otherwise empty - no line break]  
+    [City, Province/ Country if provided otherwise use user's city/province/country (guess if not provided)]  
 
-IMPORTANT INSTRUCTIONS:
-- Use the current date provided above ({current_date}) if you include a date
-- Do NOT make up or invent dates
-- Fetch sender information (name, address, phone, email) from the resume and place it at the very top of the letter as the sender header
-- Format the sender header
-- Ensure there is one line space before and after the date
-- After the date, begin the recipient section (e.g., "Hiring Manager," or specific name if available)
-- If recipient name is not mentioned, use "Hiring Manager" and the company's regional headquarters
-- Keep the entire header section like a standard cover letter
-- The cover letter should be engaging and customized to the specific role
-- Highlight the most relevant achievements from the resume
-- Maintain a {tone_description} tone throughout
-- Follow standard business letter formatting
-- Be concise but impactful (aim for 3-4 paragraphs)
-- Include a strong opening that captures attention
-- Connect specific resume experience to job requirements
-- End with a clear call to action
-- Sign off the letter with the applicant's full name (no contact info repeated at the bottom)
-- Format the response as clean HTML with proper paragraphs using <p> tags
-- Do NOT wrap your response in markdown code blocks (no ```html or ```)
-- Return ONLY the HTML content, nothing else
+    Dear [Specific name if provided of the Hiring Manager, otherwise use Hiring Manager],
 
-Format the response as clean HTML that can be directly rendered in a web page."""
-    
+    [Opening paragraph: 3-4 sentences. Mention your strong foundation in relevant skills and your excitement for the role at this company.]
+
+    [Second paragraph: Summarize your most relevant achievements and experience that directly match the job requirements. Include quantifiable results if possible.]
+
+    [Third paragraph: Explain why you are interested in the company and how your skills, experience, and values align with their mission and culture.]
+
+    [Final paragraph: Polite closing with a call to action.]
+
+    Sincerely,  
+    [Full Name]
+
+    ---
+
+    JOB POSTING:
+    {job_posting}
+
+    USER INFO:
+    {{
+        "name": "{user_info['name']}",
+        "email": "{user_info['email']}",
+        "city": "{user_info['city']}",
+        "postal_code": "{user_info['postal_code']}",
+        "country": "{user_info['country']}"
+    }}
+
+    RESUME:
+    {resume}
+
+    Additional instructions (if any):
+    {user_prompt if user_prompt else "None"}
+    {tone_description}
+
+    Notes:
+    - Never add or remove sections.
+    - Do not include extra formatting, code blocks, or HTML.
+    - Keep it concise (3–4 paragraphs).
+    - Never repeat contact info at the bottom.
+    - Use natural, professional language suitable for an entry-level software developer position.
+    """
+
+
     return prompt
 
 
