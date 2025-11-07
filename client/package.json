@@ -20,9 +20,12 @@
     "html-docx-js": "^0.3.1",
     "html-docx-js-typescript": "^0.1.5",
     "html2pdf.js": "^0.12.1",
+    "marked": "^16.4.2",
     "pdfmake": "^0.2.20",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "tslib": "^2.8.1"
   },
   "devDependencies": {
