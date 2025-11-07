@@ -134,6 +134,12 @@ Additional instructions from user:
 IMPORTANT INSTRUCTIONS:
 - Use the current date provided above ({current_date}) if you include a date
 - Do NOT make up or invent dates
+- Fetch sender information (name, address, phone, email) from the resume and place it at the very top of the letter as the sender header
+- Format the sender header
+- Ensure there is one line space before and after the date
+- After the date, begin the recipient section (e.g., "Hiring Manager," or specific name if available)
+- If recipient name is not mentioned, use "Hiring Manager" and the company's regional headquarters
+- Keep the entire header section like a standard cover letter
 - The cover letter should be engaging and customized to the specific role
 - Highlight the most relevant achievements from the resume
 - Maintain a {tone_description} tone throughout
@@ -142,6 +148,7 @@ IMPORTANT INSTRUCTIONS:
 - Include a strong opening that captures attention
 - Connect specific resume experience to job requirements
 - End with a clear call to action
+- Sign off the letter with the applicant's full name (no contact info repeated at the bottom)
 - Format the response as clean HTML with proper paragraphs using <p> tags
 - Do NOT wrap your response in markdown code blocks (no ```html or ```)
 - Return ONLY the HTML content, nothing else

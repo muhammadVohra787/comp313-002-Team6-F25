@@ -165,6 +165,9 @@ function extractGoogleJobs(): ExtractedJobDetails {
     '.job-location',
   ]);
 
+
+  console.log("[GoogleJobs] Desc length:", getHtmlContent(container)?.length || 0);
+
   return {
     jobDescription: getHtmlContent(container),
     jobTitle,
@@ -172,6 +175,7 @@ function extractGoogleJobs(): ExtractedJobDetails {
     location,
   };
 }
+
 
 function extractFallback(root: HTMLElement): ExtractedJobDetails {
   // Try multiple strategies for unknown sites
@@ -252,3 +256,5 @@ export function buildPayload(url: string, root: HTMLElement): JobDescription {
     source: jobSite,
   };
 }
+
+
