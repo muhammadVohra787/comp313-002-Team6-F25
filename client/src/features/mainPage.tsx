@@ -41,17 +41,27 @@ interface MainPageProps {
 }
 
 export default function MainPage({ isAuthenticated }: MainPageProps) {
+  // scrapedData holds job info scraped from the current tab
   const [scrapedData, setScrapedData] = useState<JobDescription | null>(null);
+  // generated cover letter text
   const [coverLetterMarkdown, setCoverLetterMarkdown] = useState<string>("");
+  // loading for scraping
   const [loading, setLoading] = useState<boolean>(false);
+  // loading for cover letter generation
   const [generatingCoverLetter, setGeneratingCoverLetter] =
     useState<boolean>(false);
+  // error messages to show in alert
   const [error, setError] = useState<string>("");
+  // version increases every time we regenerate
   const [version, setVersion] = useState<number>(0);
+  // tone for the LLM prompt
   const [tone, setTone] = useState<string>("professional");
+  // extra user prompt to send to backend for more context
   const [userPrompt, setUserPrompt] = useState<string>("");
+  // show small "copied" feedback
   const [copySuccess, setCopySuccess] = useState<boolean>(false);
 
+  // Scrape active tab for job details using content script
   const handleScrape = async () => {
     setLoading(true);
     setError("");
@@ -60,12 +70,14 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
     setUserPrompt("");
 
     try {
+      // get current active tab
       const [tab] = await chrome.tabs.query({
         active: true,
         currentWindow: true,
       });
       if (!tab?.id) throw new Error("No active tab found");
 
+      // send message to content script to scrape
       await new Promise<void>((resolve, reject) => {
         chrome.tabs.sendMessage(
           tab.id!,
@@ -77,6 +89,8 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
             if (response?.success) {
               const payload: JobDescription = response.payload;
               setScrapedData(payload);
+
+              // auto-generate cover letter if user is logged in
               if (isAuthenticated) {
                 await generateCoverLetter(payload, tone, "");
               }
@@ -94,6 +108,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
     }
   };
 
+  // Call backend to generate a cover letter based on scraped job + user prompt + tone
   const generateCoverLetter = async (
     jobData: JobDescription,
     selectedTone: string,
@@ -108,6 +123,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
         tone: selectedTone,
         userPrompt: customPrompt,
       };
+      // need token for protected endpoint
       const authData = await getAuthData();
       if (!authData?.token)
         throw new Error("Missing auth token — please log in again.");
@@ -120,28 +136,34 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
       setVersion((v) => v + 1);
     } catch (err: any) {
       console.error("Error during cover letter generation:", err);
-      setError(err?.message || "Failed to generate cover letter. Please try again.");
+      setError(
+        err?.message || "Failed to generate cover letter. Please try again."
+      );
     } finally {
       setGeneratingCoverLetter(false);
     }
   };
 
+  // Regenerate with current tone + current prompt
   const handleRegenerate = () => {
     if (scrapedData) generateCoverLetter(scrapedData, tone, userPrompt);
   };
 
+  // Copy current cover letter to clipboard
   const handleCopyToClipboard = () => {
     navigator.clipboard.writeText(coverLetterMarkdown);
     setCopySuccess(true);
     setTimeout(() => setCopySuccess(false), 2000);
   };
 
+  // Download as basic Word (HTML) document
   const handleDownloadWord = async () => {
     if (!scrapedData || !coverLetterMarkdown) {
       alert("No cover letter available to download.");
       return;
     }
 
+    // convert markdown-ish text to simple HTML paragraphs
     const wordHtml = `
     <html>
       <head>
@@ -159,9 +181,9 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
       </head>
       <body>
         ${coverLetterMarkdown
-        .split("\n\n")
-        .map((para) => `<p>${para.replace(/\n/g, "<br>")}</p>`)
-        .join("")}
+          .split("\n\n")
+          .map((para) => `<p>${para.replace(/\n/g, "<br>")}</p>`)
+          .join("")}
       </body>
     </html>
   `;
@@ -171,6 +193,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
     saveAs(blob, `CoverLetter_${dateStr}.doc`);
   };
 
+  // Download as PDF using jsPDF
   const handleDownloadPDF = async () => {
     if (!coverLetterMarkdown) {
       alert("No cover letter available to download.");
@@ -192,6 +215,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
 
     let y = marginTop;
 
+    // write each paragraph to pdf, add new page if needed
     paragraphs.forEach((para) => {
       const lines = pdf.splitTextToSize(para, usableWidth);
       lines.forEach((line) => {
@@ -222,7 +246,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
         overflowY: "auto",
       }}
     >
-      {/* Header Section */}
+      {/* Header Section: title + scrape button */}
       <Fade in timeout={400}>
         <Stack
           direction="row"
@@ -280,6 +304,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
         </Stack>
       </Fade>
 
+      {/* Show scraped job header if we have data */}
       {scrapedData && (scrapedData.jobTitle || scrapedData.companyName) && (
         <Fade in timeout={450}>
           <Paper
@@ -315,7 +340,11 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                 </Typography>
               )}
               {scrapedData.companyName && (
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: 0.5 }}
+                >
                   {scrapedData.companyName}
                 </Typography>
               )}
@@ -332,7 +361,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
         </Fade>
       )}
 
-      {/* Info Alert */}
+      {/* Info alert shown when user is not logged in */}
       {!isAuthenticated && (
         <Fade in>
           <Alert
@@ -348,7 +377,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
         </Fade>
       )}
 
-      {/* Error Alert */}
+      {/* Error alert block */}
       {error && (
         <Fade in>
           <Alert
@@ -364,7 +393,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
         </Fade>
       )}
 
-      {/* Scraped Job Card */}
+      {/* Scraped Job Details Card */}
       <Fade in timeout={600}>
         <Card
           elevation={0}
@@ -378,7 +407,11 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
         >
           <CardContent sx={{ p: 3 }}>
             <Box sx={{ mb: 2 }}>
-              <Typography align="center" variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
+              <Typography
+                align="center"
+                variant="h6"
+                sx={{ fontWeight: 700, mb: 0.5 }}
+              >
                 Scraped Job Information
               </Typography>
               <Typography align="center" variant="body2" color="text.secondary">
@@ -388,6 +421,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
 
             {scrapedData ? (
               <Stack spacing={2.5}>
+                {/* Job title */}
                 {scrapedData.jobTitle && (
                   <Box>
                     <Typography
@@ -402,7 +436,12 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                     >
                       Position
                     </Typography>
-                    <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 0.5 }}>
+                    <Stack
+                      direction="row"
+                      spacing={1.5}
+                      alignItems="center"
+                      sx={{ mt: 0.5 }}
+                    >
                       <Box
                         sx={{
                           width: 36,
@@ -426,6 +465,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                   </Box>
                 )}
 
+                {/* Company name */}
                 {scrapedData.companyName && (
                   <Box>
                     <Typography
@@ -440,7 +480,12 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                     >
                       Company
                     </Typography>
-                    <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 0.5 }}>
+                    <Stack
+                      direction="row"
+                      spacing={1.5}
+                      alignItems="center"
+                      sx={{ mt: 0.5 }}
+                    >
                       <Box
                         sx={{
                           width: 36,
@@ -461,6 +506,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                   </Box>
                 )}
 
+                {/* Location */}
                 {scrapedData.location && (
                   <Box>
                     <Typography
@@ -475,7 +521,12 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                     >
                       Location
                     </Typography>
-                    <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 0.5 }}>
+                    <Stack
+                      direction="row"
+                      spacing={1.5}
+                      alignItems="center"
+                      sx={{ mt: 0.5 }}
+                    >
                       <Box
                         sx={{
                           width: 36,
@@ -498,6 +549,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                   </Box>
                 )}
 
+                {/* Source of job post (e.g. LinkedIn) */}
                 {scrapedData.source && (
                   <Box>
                     <Typography
@@ -529,6 +581,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                   </Box>
                 )}
 
+                {/* Job URL */}
                 {scrapedData.url && (
                   <Box>
                     <Typography
@@ -543,7 +596,12 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                     >
                       Job URL
                     </Typography>
-                    <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 0.5 }}>
+                    <Stack
+                      direction="row"
+                      spacing={1.5}
+                      alignItems="center"
+                      sx={{ mt: 0.5 }}
+                    >
                       <Box
                         sx={{
                           width: 36,
@@ -555,7 +613,9 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                           justifyContent: "center",
                         }}
                       >
-                        <LinkIcon sx={{ fontSize: 20, color: "primary.main" }} />
+                        <LinkIcon
+                          sx={{ fontSize: 20, color: "primary.main" }}
+                        />
                       </Box>
                       <Typography
                         component="a"
@@ -577,6 +637,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                   </Box>
                 )}
 
+                {/* Raw job description HTML (sanitized) */}
                 {scrapedData.jobDescription && (
                   <Box>
                     <Typography
@@ -619,6 +680,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                 )}
               </Stack>
             ) : (
+              // Empty state if no job scraped yet
               <Box
                 sx={{
                   flex: 1,
@@ -643,7 +705,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
         </Card>
       </Fade>
 
-      {/* Cover Letter Card */}
+      {/* Cover Letter section - only show if logged in and we have a job */}
       {isAuthenticated && scrapedData && (
         <Fade in timeout={800}>
           <Card
@@ -658,6 +720,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
             }}
           >
             <CardContent sx={{ p: 3 }}>
+              {/* Header: title, version, actions */}
               <Stack
                 direction="row"
                 alignItems="center"
@@ -698,12 +761,10 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                   </Box>
                 </Stack>
 
+                {/* Action buttons: copy, download word, download pdf */}
                 {coverLetterMarkdown && (
                   <Stack direction="row" spacing={1}>
-                    <Tooltip
-                      title={copySuccess ? "Copied!" : "Copy"}
-                      arrow
-                    >
+                    <Tooltip title={copySuccess ? "Copied!" : "Copy"} arrow>
                       <IconButton
                         size="small"
                         onClick={handleCopyToClipboard}
@@ -713,9 +774,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                             : "background.paper",
                           color: copySuccess ? "white" : "text.secondary",
                           border: "1px solid",
-                          borderColor: copySuccess
-                            ? "success.main"
-                            : "divider",
+                          borderColor: copySuccess ? "success.main" : "divider",
                           "&:hover": {
                             bgcolor: copySuccess
                               ? "success.dark"
@@ -763,6 +822,8 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                   </Stack>
                 )}
               </Stack>
+
+              {/* Cover letter text area / empty state */}
               {coverLetterMarkdown ? (
                 <Paper
                   elevation={0}
@@ -821,6 +882,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                 </Box>
               )}
 
+              {/* Controls for extra instructions + tone + regenerate */}
               <Stack spacing={2} sx={{ mt: 3, mb: 2 }}>
                 <TextField
                   label="Additional instructions (optional)"
@@ -835,7 +897,12 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                   sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
                 />
 
-                <Stack direction="row" spacing={2} alignItems="center" justifyContent="center">
+                <Stack
+                  direction="row"
+                  spacing={2}
+                  alignItems="center"
+                  justifyContent="center"
+                >
                   <FormControl size="small" sx={{ minWidth: 180 }}>
                     <InputLabel>Tone</InputLabel>
                     <Select
@@ -873,7 +940,6 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                   </Button>
                 </Stack>
               </Stack>
-
             </CardContent>
           </Card>
         </Fade>

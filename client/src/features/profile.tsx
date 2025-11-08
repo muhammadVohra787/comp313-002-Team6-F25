@@ -34,20 +34,29 @@ export default function Profile({
   setAttentionItem: SetAttentionItem;
   onLogout?: () => void | Promise<void>;
 }) {
+  // user = server copy (current saved profile)
   const [user, setUser] = useState<User | null>(null);
+  // page-level loading
   const [loading, setLoading] = useState(true);
+  // formData = local editable copy of user
   const [formData, setFormData] = useState<Partial<User>>({});
+  // whether form has unsaved changes
   const [hasChanges, setHasChanges] = useState(false);
+  // saving state for the save button
   const [saving, setSaving] = useState(false);
+  // show/hide resume upload modal
   const [open, setOpen] = useState(false);
 
+  // Fetch profile on mount
   useEffect(() => {
     const fetchUser = async () => {
       try {
         setLoading(true);
         const response = await getWithAuth("/profile");
+        // set user and prefill form
         setUser(response.user);
         setFormData(response.user);
+        // update attention indicator in parent
         setAttentionItem("profile", response?.user?.attention_needed);
       } catch (error) {
         console.error("Error fetching user:", error);
@@ -58,14 +67,17 @@ export default function Profile({
     fetchUser();
   }, []);
 
+  // Handle input changes and detect if it deviates from original user
   const handleChange = (field: keyof User, value: any) => {
     setFormData((prev) => {
       const updated = { ...prev, [field]: value };
+      // compare to original user to know if we should enable Save
       setHasChanges(JSON.stringify(updated) !== JSON.stringify(user));
       return updated;
     });
   };
 
+  // Save profile to backend
   const handleSave = async () => {
     if (!user) return;
 
@@ -73,6 +85,7 @@ export default function Profile({
       setSaving(true);
       const response = await postWithAuth("/profile", formData);
       if (response?.user) {
+        // update both sources of truth
         setUser(response.user);
       }
       setAttentionItem("profile", response?.user?.attention_needed);
@@ -84,6 +97,7 @@ export default function Profile({
     }
   };
 
+  // Reset form to last saved user
   const handleReset = () => {
     if (user) {
       setFormData(user);
@@ -91,6 +105,7 @@ export default function Profile({
     }
   };
 
+  // Handle resume upload from modal
   const handleUpload = async (file: File) => {
     try {
       const formData = new FormData();
@@ -107,6 +122,7 @@ export default function Profile({
     }
   };
 
+  // Download latest resume from backend
   const handleResumeDownload = async () => {
     try {
       const response = await multipartGetWithAuth("/profile/resume");
@@ -114,6 +130,7 @@ export default function Profile({
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
+      // try to read filename from header
       const disposition = response.headers.get("content-disposition");
       let filename = "resume";
       if (disposition && disposition.includes("filename=")) {
@@ -129,6 +146,7 @@ export default function Profile({
     }
   };
 
+  // initial loading state
   if (loading) return <CenteredCircularProgress />;
 
   return (
@@ -143,13 +161,14 @@ export default function Profile({
           alignItems: "center",
         }}
       >
+        {/* Header: title + logout */}
         <Stack
           direction="row"
           alignItems="center"
           justifyContent="space-between"
           sx={{ mb: 3, width: "100%" }}
         >
-          {/* Left section: Icon + text */}
+          {/* Left section: Icon + label */}
           <Stack direction="row" alignItems="center" spacing={1.5}>
             <Box
               sx={{
@@ -179,7 +198,7 @@ export default function Profile({
             </Typography>
           </Stack>
 
-          {/* Right section: Logout */}
+          {/* Logout button (only if parent passed the handler) */}
           {onLogout && (
             <Button
               variant="outlined"
@@ -207,8 +226,7 @@ export default function Profile({
           )}
         </Stack>
 
-
-        {/* Resume Section */}
+        {/* Resume status section */}
         <Box
           sx={{
             mb: 3,
@@ -231,10 +249,7 @@ export default function Profile({
             <Box sx={{ flex: 1 }}>
               {user?.resume ? (
                 <>
-                  <Typography
-                    variant="body2"
-                    sx={{ fontWeight: 600, mb: 0.5 }}
-                  >
+                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
                     {user.resume.file_name}
                   </Typography>
                   <Button
@@ -276,13 +291,14 @@ export default function Profile({
           </Stack>
         </Box>
 
+        {/* Resume upload modal (file picker) */}
         <ResumeUploadModal
           open={open}
           onClose={() => setOpen(false)}
           onUpload={handleUpload}
         />
 
-        {/* Form Fields */}
+        {/* Profile form fields */}
         <Stack spacing={2.5}>
           <TextField
             label="Name"
@@ -305,6 +321,7 @@ export default function Profile({
             }}
           />
 
+          {/* City and Country side by side */}
           <Stack direction="row" spacing={2}>
             <TextField
               label="City"
@@ -344,7 +361,7 @@ export default function Profile({
           />
         </Stack>
 
-        {/* Action Buttons */}
+        {/* Actions: reset and save */}
         <Stack
           direction="row"
           justifyContent="flex-end"

@@ -26,14 +26,18 @@ export default function SignInPage({
 }: {
   setAttentionItem: SetAttentionItem;
 }) {
+  // loading state for button and auth flow
   const [loading, setLoading] = useState(false);
+  // error message from Google or backend
   const [error, setError] = useState<string>("");
 
+  // Main Google sign-in flow
   const handleLogin = async () => {
     setError("");
     setLoading(true);
 
     try {
+      // 1. Ask Chrome identity API for Google OAuth token
       const token = await new Promise<string>((resolve, reject) => {
         try {
           chrome.identity.getAuthToken({ interactive: true }, (t: any) => {
@@ -42,6 +46,7 @@ export default function SignInPage({
             }
             if (!t) return reject(new Error("No token received from Google"));
 
+            // handle token shape (string vs object)
             if (typeof t === "string") return resolve(t);
             if (typeof t === "object" && typeof t.token === "string") {
               return resolve(t.token);
@@ -55,6 +60,8 @@ export default function SignInPage({
         }
       });
 
+      // 2. (Optional) Try to fetch Google profile directly from Google
+      // so we can send it to our backend as fallback
       let profile: Record<string, any> | undefined;
       try {
         const userInfoResponse = await fetch(
@@ -76,14 +83,20 @@ export default function SignInPage({
         console.warn("Unable to fetch Google user profile", profileErr);
       }
 
+      // 3. Send token (and profile if available) to our backend
+      // to create or find the user and return our own JWT
       const response: AuthResponse = await apiPost("/auth/google", {
         token,
         profile,
       });
 
+      // 4. Save auth in extension storage so other pages can use it
       await setAuthData(response);
+
+      // 5. Update attention flag (profile incomplete, no resume, etc.)
       setAttentionItem("profile", response.user.attention_needed);
     } catch (err: any) {
+      // if anything fails, clear local auth and show error
       await removeAuth();
       const msg = err?.message || "Login failed";
       console.error("Login error:", err);
@@ -115,7 +128,7 @@ export default function SignInPage({
             textAlign: "center",
           }}
         >
-          {/* Icon */}
+          {/* Logo / hero icon */}
           <Box
             sx={{
               display: "flex",
@@ -140,13 +153,11 @@ export default function SignInPage({
                 },
               }}
             >
-              <AutoAwesomeIcon
-                sx={{ fontSize: 40, color: "white" }}
-              />
+              <AutoAwesomeIcon sx={{ fontSize: 40, color: "white" }} />
             </Box>
           </Box>
 
-          {/* Title */}
+          {/* Title + subtitle */}
           <Box>
             <Typography
               variant="h5"
@@ -171,7 +182,7 @@ export default function SignInPage({
             </Typography>
           </Box>
 
-          {/* Features List */}
+          {/* Quick feature list */}
           <List
             dense
             sx={{
@@ -221,7 +232,7 @@ export default function SignInPage({
             </ListItem>
           </List>
 
-          {/* Error Alert */}
+          {/* Error from login/backend */}
           {error && (
             <Fade in>
               <Alert
@@ -238,7 +249,7 @@ export default function SignInPage({
             </Fade>
           )}
 
-          {/* Sign In Button */}
+          {/* Google sign-in button */}
           <Button
             variant="contained"
             color="primary"
