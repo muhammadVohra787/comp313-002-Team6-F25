@@ -28,6 +28,8 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DownloadIcon from "@mui/icons-material/Download";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import LinkIcon from "@mui/icons-material/Link";
+import DOMPurify from "dompurify";
 import { postWithAuth } from "../api/base";
 import { JobDescription } from "../models/coverLetter";
 import { saveAs } from "file-saver";
@@ -86,7 +88,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
         );
       });
     } catch (err: any) {
-      setError("Unknown error while scraping");
+      setError(err?.message || "Unknown error while scraping");
     } finally {
       setLoading(false);
     }
@@ -118,9 +120,7 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
       setVersion((v) => v + 1);
     } catch (err: any) {
       console.error("Error during cover letter generation:", err);
-      setError(
-        "Failed to generate cover letter. Please try again."
-      );
+      setError(err?.message || "Failed to generate cover letter. Please try again.");
     } finally {
       setGeneratingCoverLetter(false);
     }
@@ -279,6 +279,58 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
           </Button>
         </Stack>
       </Fade>
+
+      {scrapedData && (scrapedData.jobTitle || scrapedData.companyName) && (
+        <Fade in timeout={450}>
+          <Paper
+            elevation={0}
+            sx={{
+              borderRadius: 2.5,
+              border: "1px solid",
+              borderColor: "divider",
+              px: 3,
+              py: 2,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: { xs: "flex-start", sm: "center" },
+              flexDirection: { xs: "column", sm: "row" },
+              gap: 1.5,
+            }}
+          >
+            <Box>
+              <Typography
+                variant="caption"
+                sx={{
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                  fontWeight: 600,
+                  color: "text.secondary",
+                }}
+              >
+                Current Job
+              </Typography>
+              {scrapedData.jobTitle && (
+                <Typography variant="h6" sx={{ fontWeight: 700, mt: 0.25 }}>
+                  {scrapedData.jobTitle}
+                </Typography>
+              )}
+              {scrapedData.companyName && (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  {scrapedData.companyName}
+                </Typography>
+              )}
+            </Box>
+            {scrapedData.source && (
+              <Chip
+                label={scrapedData.source}
+                size="small"
+                color="primary"
+                sx={{ alignSelf: { xs: "flex-start", sm: "center" } }}
+              />
+            )}
+          </Paper>
+        </Fade>
+      )}
 
       {/* Info Alert */}
       {!isAuthenticated && (
@@ -472,6 +524,95 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                         borderRadius: 2,
                         fontWeight: 500,
                         px: 0.5,
+                      }}
+                    />
+                  </Box>
+                )}
+
+                {scrapedData.url && (
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                        textTransform: "uppercase",
+                        letterSpacing: 1,
+                        fontWeight: 600,
+                        fontSize: "0.7rem",
+                      }}
+                    >
+                      Job URL
+                    </Typography>
+                    <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 0.5 }}>
+                      <Box
+                        sx={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 2,
+                          bgcolor: "rgba(37, 99, 235, 0.1)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <LinkIcon sx={{ fontSize: 20, color: "primary.main" }} />
+                      </Box>
+                      <Typography
+                        component="a"
+                        href={scrapedData.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        variant="body2"
+                        sx={{
+                          fontWeight: 500,
+                          color: "primary.main",
+                          textDecoration: "none",
+                          wordBreak: "break-all",
+                          "&:hover": { textDecoration: "underline" },
+                        }}
+                      >
+                        {scrapedData.url}
+                      </Typography>
+                    </Stack>
+                  </Box>
+                )}
+
+                {scrapedData.jobDescription && (
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                        textTransform: "uppercase",
+                        letterSpacing: 1,
+                        fontWeight: 600,
+                        fontSize: "0.7rem",
+                      }}
+                    >
+                      Job Description
+                    </Typography>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        mt: 0.5,
+                        p: 2,
+                        borderRadius: 2,
+                        border: "1px solid",
+                        borderColor: "divider",
+                        maxHeight: 260,
+                        overflow: "auto",
+                        bgcolor: "background.default",
+                        lineHeight: 1.6,
+                        "&::-webkit-scrollbar": {
+                          width: 6,
+                        },
+                        "&::-webkit-scrollbar-thumb": {
+                          backgroundColor: "rgba(0,0,0,0.2)",
+                          borderRadius: 3,
+                        },
+                      }}
+                      dangerouslySetInnerHTML={{
+                        __html: DOMPurify.sanitize(scrapedData.jobDescription),
                       }}
                     />
                   </Box>
