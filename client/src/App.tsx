@@ -169,7 +169,7 @@ export default function App() {
             background: "linear-gradient(135deg, #4F46E5 0%, #06B6D4 100%)",
             color: "white",
             px: 3,
-            py: 1.2,
+            py: 2.5,
             position: "relative",
             overflow: "hidden",
             "&::before": {
@@ -291,8 +291,8 @@ export default function App() {
             minHeight: 0,
             display: "flex",
             flexDirection: "column",
-            px: 3,
-            pb: 3,
+            px: 0,
+            pb: 0,
             pt: 0,
             overflowY: "auto",
           }}

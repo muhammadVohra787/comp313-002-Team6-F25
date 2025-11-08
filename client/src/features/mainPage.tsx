@@ -234,51 +234,84 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
       sx={{
         display: "flex",
         flexDirection: "column",
-        gap: 2.5,
+        gap: 1,
         height: "100%",
         minHeight: 0,
-        p: 3,
+        p: { xs: 2, sm: 3 },
         boxSizing: "border-box",
         overflowY: "auto",
+        bgcolor: 'background.default',
+        '&::-webkit-scrollbar': {
+          width: '8px',
+        },
+        '&::-webkit-scrollbar-track': {
+          background: 'transparent',
+        },
+        '&::-webkit-scrollbar-thumb': {
+          backgroundColor: 'rgba(0, 0, 0, 0.1)',
+          borderRadius: '4px',
+        },
       }}
     >
-      {/* Header Section: title + scrape button */}
+      {/* Header Section - Quick Action */}
       <Fade in timeout={400}>
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-          spacing={2}
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'stretch', sm: 'center' },
+            gap: 2,
+            justifyContent: 'space-between',
+          }}
         >
-          <Stack direction="row" alignItems="center" spacing={2}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
             <Box
               sx={{
                 width: 48,
                 height: 48,
-                borderRadius: 2.5,
-                background:
-                  "linear-gradient(135deg, rgba(79, 70, 229, 0.1), rgba(6, 182, 212, 0.1))",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "primary.main",
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #6366F1 0%, #0EA5E9 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                flexShrink: 0,
+                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.25)',
+                transition: 'all 0.3s ease',
               }}
             >
-              <WorkOutlineIcon sx={{ fontSize: 28 }} />
+              <WorkOutlineIcon sx={{ fontSize: 24 }} />
             </Box>
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                Job Snapshot
+            <Box sx={{ flex: 1 }}>
+              <Typography 
+                variant="subtitle2" 
+                sx={{ 
+                  fontWeight: 700,
+                  color: 'text.primary',
+                  mb: 0.5,
+                  fontSize: '0.95rem'
+                }}
+              >
+                Extract Job Details
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Pull job details from the active tab
+              <Typography 
+                variant="caption" 
+                sx={{ 
+                  color: 'text.secondary',
+                  fontSize: '0.8rem',
+                  lineHeight: 1.4
+                }}
+              >
+                {scrapedData 
+                  ? `Last scraped: ${scrapedData.jobTitle || scrapedData.companyName || 'Job details loaded'}` 
+                  : 'Analyze the current job posting'}
               </Typography>
             </Box>
-          </Stack>
+          </Box>
 
           <Button
             variant="contained"
-            size="medium"
+            size="large"
             onClick={handleScrape}
             disabled={loading}
             startIcon={
@@ -289,47 +322,89 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
               )
             }
             sx={{
-              borderRadius: 2.5,
-              px: 2.5,
-              py: 1,
-              boxShadow: "0 4px 12px rgba(79, 70, 229, 0.25)",
+              borderRadius: '10px',
+              px: 3,
+              py: 1.25,
+              fontWeight: 700,
+              textTransform: 'none',
+              fontSize: '0.9rem',
+              whiteSpace: 'nowrap',
+              minWidth: '140px',
+              background: 'linear-gradient(135deg, #6366F1 0%, #0EA5E9 100%)',
+              '&:hover:not(:disabled)': {
+                background: 'linear-gradient(135deg, #4F46E5 0%, #0284C7 100%)',
+                boxShadow: '0 8px 20px rgba(99, 102, 241, 0.35)',
+                transform: 'translateY(-2px)',
+              },
+              '&:active:not(:disabled)': {
+                transform: 'translateY(0)',
+              },
+              '&:disabled': {
+                opacity: 0.7,
+              },
+              transition: 'all 0.2s ease',
+              boxShadow: '0 4px 12px rgba(99, 102, 241, 0.25)'
             }}
           >
-            {loading ? "Scraping..." : "Scrape Job"}
+            {loading ? "Analyzing..." : "Extract Job"}
           </Button>
-        </Stack>
+        </Box>
       </Fade>
-      {/* Info alert shown when user is not logged in */}
-      {!isAuthenticated && (
-        <Fade in>
-          <Alert
-            severity="info"
-            sx={{
-              borderRadius: 2.5,
-              border: "1px solid",
-              borderColor: "info.light",
-            }}
-          >
-            Log in with Google to generate personalized cover letters
-          </Alert>
-        </Fade>
-      )}
+      {/* Alerts Section */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {/* Info alert shown when user is not logged in */}
+        {!isAuthenticated && (
+          <Fade in>
+            <Alert
+              severity="info"
+              variant="outlined"
+              sx={{
+                borderRadius: 3,
+                border: '1px solid',
+                borderColor: 'info.light',
+                bgcolor: 'rgba(14, 165, 233, 0.05)',
+                '& .MuiAlert-icon': {
+                  color: 'info.main',
+                },
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)'
+              }}
+            >
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                  Sign in required
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  Log in with Google to generate personalized cover letters
+                </Typography>
+              </Box>
+            </Alert>
+          </Fade>
+        )}
 
-      {/* Error alert block */}
-      {error && (
-        <Fade in>
-          <Alert
-            severity="error"
-            sx={{
-              borderRadius: 2.5,
-              border: "1px solid",
-              borderColor: "error.light",
-            }}
-          >
-            {error}
-          </Alert>
-        </Fade>
-      )}
+        {/* Error alert block */}
+        {error && (
+          <Fade in>
+            <Alert
+              severity="error"
+              variant="outlined"
+              sx={{
+                borderRadius: 3,
+                border: '1px solid',
+                borderColor: 'error.light',
+                bgcolor: 'rgba(239, 68, 68, 0.05)',
+                '& .MuiAlert-icon': {
+                  color: 'error.main',
+                },
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)'
+              }}
+            >
+              <Typography variant="body2">
+                {error}
+              </Typography>
+            </Alert>
+          </Fade>
+        )}
+      </Box>
 
       {/* Cover Letter section - only show if logged in and we have a job */}
       {isAuthenticated && scrapedData && (
@@ -338,141 +413,225 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
             elevation={0}
             sx={{
               borderRadius: 3,
-              border: "1px solid",
-              borderColor: "divider",
-              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.04)",
-
-              bgcolor: "background.paper",
+              border: '1px solid',
+              borderColor: 'divider',
+              bgcolor: 'background.paper',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.04)',
+                borderColor: 'rgba(99, 102, 241, 0.2)'
+              },
+              overflow: 'visible'
             }}
           >
-            <CardContent sx={{ p: 3 }}>
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               {/* Header: title, version, actions */}
-              <Stack
-                direction="row"
-                alignItems="center"
-                justifyContent="space-between"
-                sx={{ mb: 2 }}
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: { xs: 'column', sm: 'row' },
+                  alignItems: { xs: 'flex-start', sm: 'center' },
+                  justifyContent: 'space-between',
+                  gap: 2,
+                  mb: 3,
+                  pb: 2,
+                  borderBottom: '1px solid',
+                  borderColor: 'divider'
+                }}
               >
-                <Stack direction="row" alignItems="center" spacing={1.5}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                   <Box
                     sx={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 2,
-                      background:
-                        "linear-gradient(135deg, #4F46E5 0%, #06B6D4 100%)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
+                      width: 44,
+                      height: 44,
+                      borderRadius: '12px',
+                      background: 'linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      flexShrink: 0,
+                      boxShadow: '0 4px 6px -1px rgba(139, 92, 246, 0.3)'
                     }}
                   >
-                    <AutoAwesomeIcon sx={{ fontSize: 20, color: "white" }} />
+                    <AutoAwesomeIcon sx={{ fontSize: 22 }} />
                   </Box>
                   <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                      Cover Letter
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography 
+                        variant="h6" 
+                        sx={{ 
+                          fontWeight: 700,
+                          color: 'text.primary',
+                          lineHeight: 1.3
+                        }}
+                      >
+                        Cover Letter
+                      </Typography>
                       {version > 0 && (
                         <Chip
                           label={`v${version}`}
                           size="small"
                           sx={{
-                            ml: 1,
-                            height: 20,
-                            fontSize: "0.7rem",
-                            fontWeight: 600,
+                            height: 22,
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            bgcolor: 'rgba(139, 92, 246, 0.1)',
+                            color: 'primary.main',
+                            '& .MuiChip-label': {
+                              px: 1
+                            }
                           }}
                         />
                       )}
+                    </Box>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        color: 'text.secondary',
+                        fontSize: '0.8125rem',
+                        mt: 0.5
+                      }}
+                    >
+                      {generatingCoverLetter 
+                        ? 'Generating your cover letter...' 
+                        : 'Review and edit your generated cover letter'}
                     </Typography>
                   </Box>
-                </Stack>
+                </Box>
 
                 {/* Action buttons: copy, download word, download pdf */}
                 {coverLetterMarkdown && (
-                  <Stack direction="row" spacing={1}>
-                    <Tooltip title={copySuccess ? "Copied!" : "Copy"} arrow>
-                      <IconButton
+                  <Box 
+                    sx={{ 
+                      display: 'flex', 
+                      gap: 1,
+                      ml: 'auto',
+                      flexWrap: 'wrap',
+                      '& .MuiButton-root': {
+                        minWidth: 'auto',
+                        px: 1.5,
+                        height: 36,
+                        borderRadius: '10px',
+                        textTransform: 'none',
+                        fontSize: '0.8125rem',
+                        fontWeight: 500,
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          transform: 'translateY(-1px)',
+                        },
+                        '&:active': {
+                          transform: 'translateY(0)',
+                        },
+                      }
+                    }}
+                  >
+                    <Tooltip 
+                      title={copySuccess ? "Copied to clipboard!" : "Copy to clipboard"} 
+                      arrow
+                      placement="top"
+                    >
+                      <Button
+                        variant="outlined"
                         size="small"
                         onClick={handleCopyToClipboard}
+                        startIcon={
+                          copySuccess ? (
+                            <CheckCircleIcon sx={{ fontSize: 18 }} />
+                          ) : (
+                            <ContentCopyIcon sx={{ fontSize: 16 }} />
+                          )
+                        }
                         sx={{
-                          bgcolor: copySuccess
-                            ? "success.main"
-                            : "background.paper",
-                          color: copySuccess ? "white" : "text.secondary",
-                          border: "1px solid",
-                          borderColor: copySuccess ? "success.main" : "divider",
-                          "&:hover": {
-                            bgcolor: copySuccess
-                              ? "success.dark"
-                              : "action.hover",
+                          borderColor: copySuccess ? 'success.main' : 'divider',
+                          color: copySuccess ? 'success.main' : 'text.secondary',
+                          '&:hover': {
+                            borderColor: copySuccess ? 'success.main' : 'text.secondary',
+                            bgcolor: copySuccess ? 'rgba(16, 185, 129, 0.05)' : 'action.hover',
                           },
                         }}
                       >
-                        {copySuccess ? (
-                          <CheckCircleIcon sx={{ fontSize: 18 }} />
-                        ) : (
-                          <ContentCopyIcon sx={{ fontSize: 18 }} />
-                        )}
-                      </IconButton>
+                        {copySuccess ? 'Copied!' : 'Copy'}
+                      </Button>
                     </Tooltip>
 
-                    <Tooltip title="Download Word" arrow>
-                      <IconButton
+                    <Tooltip title="Download as Word" arrow placement="top">
+                      <Button
+                        variant="outlined"
                         size="small"
                         onClick={handleDownloadWord}
+                        startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
                         sx={{
-                          bgcolor: "background.paper",
-                          border: "1px solid",
-                          borderColor: "divider",
-                          color: "primary.main",
+                          borderColor: 'divider',
+                          color: 'text.secondary',
+                          '&:hover': {
+                            borderColor: 'primary.main',
+                            color: 'primary.main',
+                            bgcolor: 'rgba(99, 102, 241, 0.05)',
+                          },
                         }}
                       >
-                        <DownloadIcon sx={{ fontSize: 18 }} />
-                      </IconButton>
+                        Word
+                      </Button>
                     </Tooltip>
 
-                    <Tooltip title="Download PDF" arrow>
-                      <IconButton
+                    <Tooltip title="Download as PDF" arrow placement="top">
+                      <Button
+                        variant="contained"
                         size="small"
                         onClick={handleDownloadPDF}
+                        startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
                         sx={{
-                          bgcolor: "background.paper",
-                          border: "1px solid",
-                          borderColor: "divider",
-                          color: "secondary.main",
+                          bgcolor: 'primary.main',
+                          color: 'white',
+                          '&:hover': {
+                            bgcolor: 'primary.dark',
+                            boxShadow: '0 4px 6px -1px rgba(99, 102, 241, 0.3)',
+                          },
                         }}
                       >
-                        <DownloadIcon sx={{ fontSize: 18 }} />
-                      </IconButton>
+                        PDF
+                      </Button>
                     </Tooltip>
-                  </Stack>
+                  </Box>
                 )}
-              </Stack>
+              </Box>
 
-              {/* Cover letter text area / empty state */}
+              {/* Cover letter text area */}
               {coverLetterMarkdown ? (
-                <Paper
+                <Box
+                  sx={{
+                    mb: 3,
+                    '&:hover .cover-letter-actions': {
+                      opacity: 1,
+                      visibility: 'visible',
+                    },
+                    overflowY: 'hidden',
+                  }}
+                >
+                  <Paper
                   elevation={0}
                   sx={{
-                    p: 2,
+                    p: { xs: 2, sm: 3 },
                     borderRadius: 2.5,
-                    bgcolor: "background.paper",
-                    border: "1px solid",
-                    borderColor: "divider",
-                    maxHeight: 360,
-                    overflowY: "auto",
-                    "&::-webkit-scrollbar": { width: 6 },
-                    "&::-webkit-scrollbar-thumb": {
-                      backgroundColor: "rgba(0,0,0,0.2)",
-                      borderRadius: 3,
-                    },
+                    bgcolor: 'background.paper',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    maxHeight: 400,
+                    overflowY: 'auto',
+                    position: 'relative',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      borderColor: 'primary.light',
+                      boxShadow: '0 0 0 1px rgba(99, 102, 241, 0.5)',
+                    }
                   }}
                 >
                   <TextField
                     multiline
                     fullWidth
-                    minRows={8}
-                    maxRows={20}
+                    minRows={10}
                     value={coverLetterMarkdown}
                     onChange={(e) => setCoverLetterMarkdown(e.target.value)}
                     variant="standard"
@@ -480,75 +639,323 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                       disableUnderline: true,
                     }}
                     sx={{
-                      "& .MuiInputBase-input": {
-                        fontFamily: "inherit",
-                        fontSize: "0.875rem",
+                      '& .MuiInputBase-input': {
+                        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                        fontSize: '0.9375rem',
                         lineHeight: 1.7,
+                        color: 'text.primary',
+                        '&:focus': {
+                          outline: 'none',
+                        },
                       },
                     }}
+                    placeholder="Your generated cover letter will appear here..."
                   />
                 </Paper>
+                
+                {/* Floating action buttons */}
+                {coverLetterMarkdown && (
+                  <Box
+                    className="cover-letter-actions"
+                    sx={{
+                      position: 'absolute',
+                      right: 24,
+                      top: -16,
+                      display: 'flex',
+                      gap: 1,
+                      bgcolor: 'background.paper',
+                      p: 0.5,
+                      borderRadius: '12px',
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                      opacity: 0,
+                      visibility: 'hidden',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        opacity: 1,
+                        visibility: 'visible',
+                      },
+                    }}
+                  >
+                    <Tooltip title="Copy to clipboard" arrow>
+                      <IconButton
+                        size="small"
+                        onClick={handleCopyToClipboard}
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          color: 'text.secondary',
+                          '&:hover': {
+                            color: 'primary.main',
+                            bgcolor: 'rgba(99, 102, 241, 0.1)',
+                          },
+                        }}
+                      >
+                        {copySuccess ? (
+                          <CheckCircleIcon fontSize="small" />
+                        ) : (
+                          <ContentCopyIcon fontSize="small" />
+                        )}
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                )}
+                </Box>
               ) : (
                 <Box
                   sx={{
-                    textAlign: "center",
-                    py: 3,
-                    px: 2,
+                    textAlign: 'center',
+                    py: 5,
+                    px: 3,
                     borderRadius: 2.5,
-                    bgcolor: "rgba(248, 250, 252, 0.6)",
-                    border: "1px dashed",
-                    borderColor: "divider",
+                    bgcolor: 'rgba(248, 250, 252, 0.6)',
+                    border: '1px dashed',
+                    borderColor: 'divider',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      borderColor: 'primary.light',
+                      bgcolor: 'rgba(99, 102, 241, 0.02)',
+                    },
                   }}
                 >
-                  <Typography variant="body2" color="text.secondary">
+                  <Box
+                    sx={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: '50%',
+                      bgcolor: 'rgba(99, 102, 241, 0.1)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      mb: 2,
+                      color: 'primary.main',
+                    }}
+                  >
+                    <AutoAwesomeIcon sx={{ fontSize: 28 }} />
+                  </Box>
+                  <Typography 
+                    variant="subtitle1" 
+                    sx={{ 
+                      fontWeight: 600, 
+                      color: 'text.primary',
+                      mb: 0.75 
+                    }}
+                  >
                     {generatingCoverLetter || loading
-                      ? "Generating your tailored cover letter..."
-                      : "Scrape a job to generate a cover letter"}
+                      ? 'Generating your cover letter...'
+                      : 'Ready to create your cover letter'}
                   </Typography>
+                  <Typography 
+                    variant="body2" 
+                    sx={{ 
+                      color: 'text.secondary',
+                      maxWidth: '380px',
+                      mx: 'auto',
+                      lineHeight: 1.5,
+                      mb: 2
+                    }}
+                  >
+                    {generatingCoverLetter || loading
+                      ? 'AI is analyzing the job description and crafting a personalized cover letter tailored to your profile.'
+                      : 'Click "Scrape" above to extract job details from the current page, then we\'ll generate a customized cover letter in seconds.'}
+                  </Typography>
+                  {!generatingCoverLetter && !loading && (
+                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap', fontSize: '0.75rem', color: 'text.secondary' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>✓ AI-powered</Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>✓ Personalized</Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>✓ Instant</Box>
+                    </Box>
+                  )}
+                  {(generatingCoverLetter || loading) && (
+                    <CircularProgress 
+                      size={24} 
+                      thickness={4}
+                      sx={{ 
+                        color: 'primary.main',
+                        mt: 1 
+                      }} 
+                    />
+                  )}
                 </Box>
               )}
 
               {/* Controls for extra instructions + tone + regenerate */}
-              <Stack spacing={2} sx={{ mt: 3, mb: 2 }}>
-                <TextField
-                  label="Additional instructions (optional)"
-                  size="small"
-                  fullWidth
-                  multiline
-                  minRows={3}
-                  value={userPrompt}
-                  onChange={(e) => setUserPrompt(e.target.value)}
-                  placeholder="Add any context to tailor the cover letter..."
-                  variant="outlined"
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
-                />
-
-                <Stack
-                  direction="row"
-                  spacing={2}
-                  alignItems="center"
-                  justifyContent="center"
+              <Box
+                sx={{
+                  mt: 3,
+                  p: { xs: 2, sm: 2.5 },
+                  borderRadius: 2.5,
+                  bgcolor: 'rgba(248, 250, 252, 0.6)',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                }}
+              >
+                <Typography 
+                  variant="subtitle2" 
+                  sx={{ 
+                    fontWeight: 600, 
+                    mb: 1.5,
+                    color: 'text.primary',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    fontSize: '0.9rem'
+                  }}
                 >
-                  <FormControl size="small" sx={{ minWidth: 180 }}>
+                  <AutoAwesomeIcon color="primary" fontSize="small" />
+                  Customize
+                </Typography>
+                
+                <Box sx={{ mb: 2 }}>
+                  <Typography 
+                    variant="body2" 
+                    sx={{ 
+                      color: 'text.secondary',
+                      mb: 1,
+                      fontSize: '0.8125rem'
+                    }}
+                  >
+                    Add instructions or adjust tone:
+                  </Typography>
+                  
+                  <TextField
+                    label="Additional instructions (optional)"
+                    size="small"
+                    fullWidth
+                    multiline
+                    minRows={3}
+                    value={userPrompt}
+                    onChange={(e) => setUserPrompt(e.target.value)}
+                    placeholder="E.g., 'Emphasize my 5 years of experience in React and Node.js', 'Mention my certification in Project Management', etc."
+                    variant="outlined"
+                    sx={{ 
+                      '& .MuiOutlinedInput-root': { 
+                        borderRadius: 2,
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: 'primary.light',
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: 'primary.main',
+                          borderWidth: '1px',
+                        },
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: 'text.secondary',
+                      },
+                      '& .MuiOutlinedInput-input': {
+                        fontSize: '0.9375rem',
+                      },
+                    }}
+                  />
+                </Box>
+
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    alignItems: { xs: 'stretch', sm: 'center' },
+                    justifyContent: 'space-between',
+                    gap: 2,
+                    pt: 2,
+                    borderTop: '1px solid',
+                    borderColor: 'divider'
+                  }}
+                >
+                  <FormControl 
+                    size="small" 
+                    sx={{ 
+                      minWidth: 200,
+                      '& .MuiInputBase-root': {
+                        borderRadius: 2,
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: 'primary.light',
+                        },
+                      },
+                    }}
+                  >
                     <InputLabel>Tone</InputLabel>
                     <Select
                       value={tone}
                       label="Tone"
                       onChange={(e) => setTone(e.target.value)}
-                      sx={{ borderRadius: 2 }}
+                      sx={{
+                        '& .MuiSelect-select': {
+                          display: 'flex',
+                          alignItems: 'center',
+                          py: 1,
+                        },
+                      }}
                     >
-                      <MenuItem value="professional">Professional</MenuItem>
-                      <MenuItem value="enthusiastic">Enthusiastic</MenuItem>
-                      <MenuItem value="casual">Casual</MenuItem>
-                      <MenuItem value="formal">Formal</MenuItem>
+                      <MenuItem value="professional">
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ 
+                            width: 12, 
+                            height: 12, 
+                            borderRadius: '50%',
+                            bgcolor: 'primary.main',
+                            opacity: tone === 'professional' ? 1 : 0.5
+                          }} />
+                          <Box>
+                            <Box sx={{ fontWeight: 500, lineHeight: 1.2 }}>Professional</Box>
+                            <Box sx={{ fontSize: '0.7rem', opacity: 0.7 }}>Formal and business-appropriate</Box>
+                          </Box>
+                        </Box>
+                      </MenuItem>
+                      <MenuItem value="enthusiastic">
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ 
+                            width: 12, 
+                            height: 12, 
+                            borderRadius: '50%',
+                            bgcolor: 'success.main',
+                            opacity: tone === 'enthusiastic' ? 1 : 0.5
+                          }} />
+                          <Box>
+                            <Box sx={{ fontWeight: 500, lineHeight: 1.2 }}>Enthusiastic</Box>
+                            <Box sx={{ fontSize: '0.7rem', opacity: 0.7 }}>Energetic and passionate</Box>
+                          </Box>
+                        </Box>
+                      </MenuItem>
+                      <MenuItem value="casual">
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ 
+                            width: 12, 
+                            height: 12, 
+                            borderRadius: '50%',
+                            bgcolor: 'info.main',
+                            opacity: tone === 'casual' ? 1 : 0.5
+                          }} />
+                          <Box>
+                            <Box sx={{ fontWeight: 500, lineHeight: 1.2 }}>Casual</Box>
+                            <Box sx={{ fontSize: '0.7rem', opacity: 0.7 }}>Friendly and approachable</Box>
+                          </Box>
+                        </Box>
+                      </MenuItem>
+                      <MenuItem value="formal">
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ 
+                            width: 12, 
+                            height: 12, 
+                            borderRadius: '50%',
+                            bgcolor: 'secondary.main',
+                            opacity: tone === 'formal' ? 1 : 0.5
+                          }} />
+                          <Box>
+                            <Box sx={{ fontWeight: 500, lineHeight: 1.2 }}>Formal</Box>
+                            <Box sx={{ fontSize: '0.7rem', opacity: 0.7 }}>Very formal and traditional</Box>
+                          </Box>
+                        </Box>
+                      </MenuItem>
                     </Select>
                   </FormControl>
+                  
                   <Button
                     variant="contained"
-                    size="small"
+                    size="large"
                     startIcon={
                       generatingCoverLetter ? (
-                        <CircularProgress size={16} color="inherit" />
+                        <CircularProgress size={20} color="inherit" />
                       ) : (
                         <RefreshIcon />
                       )
@@ -556,16 +963,31 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                     onClick={handleRegenerate}
                     disabled={generatingCoverLetter}
                     sx={{
-                      borderRadius: 2,
-                      whiteSpace: "nowrap",
-                      px: 2.5,
-                      boxShadow: "0 4px 12px rgba(79, 70, 229, 0.25)",
+                      borderRadius: '12px',
+                      px: 3,
+                      py: 1.5,
+                      fontWeight: 600,
+                      textTransform: 'none',
+                      fontSize: '0.9375rem',
+                      whiteSpace: 'nowrap',
+                      minWidth: '160px',
+                      background: 'linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)',
+                      '&:hover': {
+                        transform: 'translateY(-1px)',
+                        boxShadow: '0 10px 15px -3px rgba(139, 92, 246, 0.3)',
+                        background: 'linear-gradient(135deg, #7C3AED 0%, #DB2777 100%)',
+                      },
+                      '&:active': {
+                        transform: 'translateY(0)',
+                      },
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 4px 6px -1px rgba(139, 92, 246, 0.3)'
                     }}
                   >
-                    {generatingCoverLetter ? "Generating..." : "Regenerate"}
+                    {generatingCoverLetter ? 'Generating...' : 'Regenerate Cover Letter'}
                   </Button>
-                </Stack>
-              </Stack>
+                </Box>
+              </Box>
             </CardContent>
           </Card>
         </Fade>
