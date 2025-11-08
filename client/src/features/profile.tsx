@@ -10,20 +10,29 @@ import {
   Box,
   TextField,
   Button,
-  CircularProgress,
   Typography,
   Paper,
-  Divider,
+  Stack,
+  Fade,
+  Chip,
 } from "@mui/material";
 import CenteredCircularProgress from "../components/centeredCircularProgress";
 import ResumeUploadModal from "../components/resumeUploadModal";
 import { SetAttentionItem } from "../types";
 import DownloadIcon from "@mui/icons-material/Download";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import SaveIcon from "@mui/icons-material/Save";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import DescriptionIcon from "@mui/icons-material/Description";
+import LogoutIcon from "@mui/icons-material/Logout";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 
 export default function Profile({
   setAttentionItem,
+  onLogout,
 }: {
   setAttentionItem: SetAttentionItem;
+  onLogout?: () => void | Promise<void>;
 }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,18 +40,15 @@ export default function Profile({
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
+
   useEffect(() => {
     const fetchUser = async () => {
       try {
         setLoading(true);
         const response = await getWithAuth("/profile");
-
         setUser(response.user);
         setFormData(response.user);
         setAttentionItem("profile", response?.user?.attention_needed);
-        // TODO: get and show the resume on file.
-        // setResumeFile(response?.user?.resume || null);
-        // setResumeText(response?.user?.resume || "Resume is required");
       } catch (error) {
         console.error("Error fetching user:", error);
       } finally {
@@ -104,14 +110,10 @@ export default function Profile({
   const handleResumeDownload = async () => {
     try {
       const response = await multipartGetWithAuth("/profile/resume");
-      // Convert to blob
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-
-      // Create a temporary link to trigger download
       const a = document.createElement("a");
       a.href = url;
-      // Use the filename from headers if available, fallback to generic
       const disposition = response.headers.get("content-disposition");
       let filename = "resume";
       if (disposition && disposition.includes("filename=")) {
@@ -130,139 +132,258 @@ export default function Profile({
   if (loading) return <CenteredCircularProgress />;
 
   return (
-    <Paper
-      elevation={3}
-      sx={{
-        p: 1,
-        borderRadius: 3,
-        width: "100%",
-        maxWidth: 450,
-        m: 1,
-      }}
-    >
-      <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-        Profile Information
-      </Typography>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
-        {user?.resume ? (
-          <a
-            href="#"
-            onClick={handleResumeDownload}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              fontSize: 16,
-              fontWeight: 500,
-              color: "#1976d2",
-              textDecoration: "underline",
-            }}
-          >
-            {user.resume.file_name}
-          </a>
-        ) : (
-          <Typography
-            variant="subtitle1"
-            sx={{ fontWeight: 500, color: "error.main", fontSize: 16 }}
-          >
-            You must upload a resume
-          </Typography>
-        )}
-
-        {/* Manage link styled same way */}
-        <a
-          href="#"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-            fontSize: 16,
-            fontWeight: 500,
-            color: "#1976d2",
-            textDecoration: "underline",
-          }}
-          onClick={() => setOpen(true)}
+    <Fade in timeout={400}>
+      <Box
+        sx={{
+          height: "100%",
+          overflowY: "auto",
+          p: 3,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          sx={{ mb: 3, width: "100%" }}
         >
-          Manage
-        </a>
-      </Box>
+          {/* Left section: Icon + text */}
+          <Stack direction="row" alignItems="center" spacing={1.5}>
+            <Box
+              sx={{
+                width: 48,
+                height: 48,
+                borderRadius: 2.5,
+                background:
+                  "linear-gradient(135deg, rgba(79, 70, 229, 0.1), rgba(6, 182, 212, 0.1))",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "primary.main",
+              }}
+            >
+              <AccountCircleIcon sx={{ fontSize: 28 }} />
+            </Box>
 
-      <ResumeUploadModal
-        open={open}
-        onClose={() => setOpen(false)}
-        onUpload={handleUpload}
-      />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        <TextField
-          label="Name"
-          size="small"
-          value={formData.name || ""}
-          onChange={(e) => handleChange("name", e.target.value)}
-          error={!formData.name}
-        />
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+                letterSpacing: "-0.01em",
+                color: "text.primary",
+              }}
+            >
+              Profile Information
+            </Typography>
+          </Stack>
 
-        <TextField
-          label="Email"
-          size="small"
-          value={formData.email || ""}
-          disabled
-        />
+          {/* Right section: Logout */}
+          {onLogout && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<LogoutIcon />}
+              onClick={onLogout}
+              sx={{
+                ml: "auto",
+                borderRadius: 2,
+                px: 2,
+                py: 0.75,
+                fontSize: "0.875rem",
+                fontWeight: 500,
+                borderColor: "divider",
+                color: "text.secondary",
+                "&:hover": {
+                  borderColor: "error.main",
+                  color: "error.main",
+                  bgcolor: "rgba(239, 68, 68, 0.04)",
+                },
+              }}
+            >
+              Logout
+            </Button>
+          )}
+        </Stack>
 
-        <Box sx={{ display: "flex", gap: 2 }}>
-          <TextField
-            label="City"
-            size="small"
-            fullWidth
-            value={formData.city || ""}
-            onChange={(e) => handleChange("city", e.target.value)}
-            error={!formData.city}
-          />
-          <TextField
-            label="Country"
-            size="small"
-            fullWidth
-            value={formData.country || ""}
-            onChange={(e) => handleChange("country", e.target.value)}
-            error={!formData.country}
-          />
+
+        {/* Resume Section */}
+        <Box
+          sx={{
+            mb: 3,
+            p: 2,
+            borderRadius: 2.5,
+            bgcolor: user?.resume
+              ? "rgba(16, 185, 129, 0.05)"
+              : "rgba(239, 68, 68, 0.05)",
+            border: "1px solid",
+            borderColor: user?.resume
+              ? "rgba(16, 185, 129, 0.2)"
+              : "rgba(239, 68, 68, 0.2)",
+          }}
+        >
+          <Stack direction="row" alignItems="center" spacing={2}>
+            <DescriptionIcon
+              color={user?.resume ? "success" : "error"}
+              sx={{ fontSize: 28 }}
+            />
+            <Box sx={{ flex: 1 }}>
+              {user?.resume ? (
+                <>
+                  <Typography
+                    variant="body2"
+                    sx={{ fontWeight: 600, mb: 0.5 }}
+                  >
+                    {user.resume.file_name}
+                  </Typography>
+                  <Button
+                    size="small"
+                    startIcon={<DownloadIcon />}
+                    onClick={handleResumeDownload}
+                    sx={{
+                      textTransform: "none",
+                      fontSize: "0.75rem",
+                      p: 0,
+                      minWidth: 0,
+                    }}
+                  >
+                    Download
+                  </Button>
+                </>
+              ) : (
+                <Typography
+                  variant="body2"
+                  sx={{ fontWeight: 600, color: "error.main" }}
+                >
+                  You must upload a resume
+                </Typography>
+              )}
+            </Box>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<UploadFileIcon />}
+              onClick={() => setOpen(true)}
+              sx={{
+                borderRadius: 2,
+                textTransform: "none",
+                fontWeight: 600,
+              }}
+            >
+              {user?.resume ? "Replace" : "Upload"}
+            </Button>
+          </Stack>
         </Box>
 
-        <TextField
-          label="Postal Code (optional)"
-          size="small"
-          value={formData.postal_code || ""}
-          onChange={(e) => handleChange("postal_code", e.target.value)}
+        <ResumeUploadModal
+          open={open}
+          onClose={() => setOpen(false)}
+          onUpload={handleUpload}
         />
 
-        <TextField
-          label="Universal Personal Prompt (optional)"
-          size="small"
-          multiline
-          minRows={3}
-          value={formData.personal_prompt || ""}
-          onChange={(e) => handleChange("personal_prompt", e.target.value)}
-        />
-      </Box>
-      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mt: 1 }}>
-        <Button
-          variant="outlined"
-          color="error"
-          size="small"
-          onClick={handleReset}
-          disabled={!hasChanges || saving}
+        {/* Form Fields */}
+        <Stack spacing={2.5}>
+          <TextField
+            label="Name"
+            size="small"
+            value={formData.name || ""}
+            onChange={(e) => handleChange("name", e.target.value)}
+            error={!formData.name}
+            helperText={!formData.name ? "Name is required" : ""}
+          />
+
+          <TextField
+            label="Email"
+            size="small"
+            value={formData.email || ""}
+            disabled
+            sx={{
+              "& .MuiInputBase-input.Mui-disabled": {
+                WebkitTextFillColor: "rgba(0, 0, 0, 0.6)",
+              },
+            }}
+          />
+
+          <Stack direction="row" spacing={2}>
+            <TextField
+              label="City"
+              size="small"
+              fullWidth
+              value={formData.city || ""}
+              onChange={(e) => handleChange("city", e.target.value)}
+              error={!formData.city}
+              helperText={!formData.city ? "Required" : ""}
+            />
+            <TextField
+              label="Country"
+              size="small"
+              fullWidth
+              value={formData.country || ""}
+              onChange={(e) => handleChange("country", e.target.value)}
+              error={!formData.country}
+              helperText={!formData.country ? "Required" : ""}
+            />
+          </Stack>
+
+          <TextField
+            label="Postal Code (optional)"
+            size="small"
+            value={formData.postal_code || ""}
+            onChange={(e) => handleChange("postal_code", e.target.value)}
+          />
+
+          <TextField
+            label="Universal Personal Prompt (optional)"
+            size="small"
+            multiline
+            minRows={3}
+            value={formData.personal_prompt || ""}
+            onChange={(e) => handleChange("personal_prompt", e.target.value)}
+            placeholder="Add any personal details or preferences for your cover letters..."
+          />
+        </Stack>
+
+        {/* Action Buttons */}
+        <Stack
+          direction="row"
+          justifyContent="flex-end"
+          spacing={1.5}
+          sx={{ mt: 3 }}
         >
-          Reset
-        </Button>
-        <Button
-          variant="contained"
-          color="success"
-          size="small"
-          onClick={handleSave}
-          disabled={!hasChanges || saving}
-        >
-          {saving ? "Saving..." : "Save"}
-        </Button>
+          <Button
+            variant="outlined"
+            size="medium"
+            startIcon={<RestartAltIcon />}
+            onClick={handleReset}
+            disabled={!hasChanges || saving}
+            sx={{
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 600,
+              px: 2.5,
+            }}
+          >
+            Reset
+          </Button>
+          <Button
+            variant="contained"
+            size="medium"
+            startIcon={<SaveIcon />}
+            onClick={handleSave}
+            disabled={!hasChanges || saving}
+            sx={{
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 600,
+              px: 2.5,
+              boxShadow: "0 4px 12px rgba(79, 70, 229, 0.25)",
+            }}
+          >
+            {saving ? "Saving..." : "Save Changes"}
+          </Button>
+        </Stack>
       </Box>
-    </Paper>
+    </Fade>
   );
 }

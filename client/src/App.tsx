@@ -10,11 +10,13 @@ import {
   Stack,
   Tooltip,
   Typography,
+  Fade,
 } from "@mui/material";
 import Navbar from "./components/navbar";
 import HomeIcon from "@mui/icons-material/Home";
 import HistoryIcon from "@mui/icons-material/History";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import LogoutIcon from "@mui/icons-material/Logout";
 import { NavItem } from "./types";
 import Profile from "./features/profile";
 import CenteredCircularProgress from "./components/centeredCircularProgress";
@@ -117,9 +119,22 @@ export default function App() {
       case "home":
         return <MainPage isAuthenticated={!!user} />;
       case "history":
-        return <div>History</div>;
+        return (
+          <Box
+            sx={{
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Typography variant="h6" color="text.secondary">
+              History Coming Soon
+            </Typography>
+          </Box>
+        );
       case "profile":
-        return <Profile setAttentionItem={setAttentionItem} />;
+        return <Profile setAttentionItem={setAttentionItem} onLogout={handleLogout} />;
       default:
         return <MainPage isAuthenticated={!!user} />;
     }
@@ -135,25 +150,39 @@ export default function App() {
       }}
     >
       <Paper
-        elevation={6}
+        elevation={0}
         sx={{
           flex: 1,
           minHeight: 0,
           display: "flex",
           flexDirection: "column",
-          borderRadius: 3,
+          borderRadius: 4,
           overflow: "hidden",
-          backdropFilter: "blur(8px)",
+          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.12)",
+          border: "1px solid",
+          borderColor: "divider",
         }}
       >
+        {/* Header */}
         <Box
           sx={{
-            background:
-              "linear-gradient(135deg, rgba(63,81,181,0.95), rgba(30,136,229,0.9))",
+            background: "linear-gradient(135deg, #4F46E5 0%, #06B6D4 100%)",
             color: "white",
             px: 3,
             py: 2.5,
-            boxShadow: "inset 0 -1px 0 rgba(255,255,255,0.18)",
+            position: "relative",
+            overflow: "hidden",
+            "&::before": {
+              content: '""',
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background:
+                "radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%)",
+              pointerEvents: "none",
+            },
           }}
         >
           <Stack
@@ -161,29 +190,51 @@ export default function App() {
             justifyContent="space-between"
             alignItems="center"
             spacing={2}
+            sx={{ position: "relative", zIndex: 1 }}
           >
             <Box>
-              <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: 0.3 }}>
+              <Typography
+                variant="h5"
+                sx={{
+                  fontWeight: 700,
+                  letterSpacing: "-0.02em",
+                  mb: 0.5,
+                }}
+              >
                 Jobmate AI
               </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                Generate tailored cover letters directly from job listings.
+              <Typography
+                variant="body2"
+                sx={{
+                  opacity: 0.95,
+                  fontSize: "0.875rem",
+                }}
+              >
+                Generate tailored cover letters from job listings
               </Typography>
             </Box>
             <Tooltip
               title={
                 user
-                  ? "You are signed in. Logout to switch accounts."
-                  : "Sign in to unlock AI-powered cover letters."
+                  ? "Signed in successfully"
+                  : "Sign in to unlock features"
               }
+              arrow
             >
               <Avatar
                 sx={{
-                  bgcolor: "rgba(255,255,255,0.25)",
-                  border: "1px solid rgba(255,255,255,0.35)",
-                  width: 44,
-                  height: 44,
-                  fontWeight: 600,
+                  bgcolor: "rgba(255,255,255,0.2)",
+                  backdropFilter: "blur(10px)",
+                  border: "2px solid rgba(255,255,255,0.3)",
+                  width: 48,
+                  height: 48,
+                  fontWeight: 700,
+                  fontSize: "1.25rem",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    transform: "scale(1.05)",
+                    bgcolor: "rgba(255,255,255,0.25)",
+                  },
                 }}
               >
                 {user ? "✓" : "?"}
@@ -192,7 +243,8 @@ export default function App() {
           </Stack>
         </Box>
 
-        <Box sx={{ px: 3, pt: 3 }}>
+        {/* Navigation */}
+        <Box sx={{ px: 3, pt: 2.5, pb: 1.5 }}>
           <Navbar
             navItems={navItems}
             active={active}
@@ -202,23 +254,37 @@ export default function App() {
           />
         </Box>
 
-        {user && (
-          <Box sx={{ px: 3, pb: 0.5 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={handleLogout}
-              sx={{
-                alignSelf: "flex-end",
-                borderRadius: 2,
-                textTransform: "none",
-              }}
-            >
-              Logout
-            </Button>
-          </Box>
-        )}
+        {/* Logout Button */}
+        {/* {user && (
+          <Fade in={user}>
+            <Box sx={{ px: 3, pb: 1 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<LogoutIcon />}
+                onClick={handleLogout}
+                sx={{
+                  borderRadius: 2.5,
+                  px: 2,
+                  py: 0.75,
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  borderColor: "divider",
+                  color: "text.secondary",
+                  "&:hover": {
+                    borderColor: "error.main",
+                    color: "error.main",
+                    bgcolor: "rgba(239, 68, 68, 0.04)",
+                  },
+                }}
+              >
+                Logout
+              </Button>
+            </Box>
+          </Fade>
+        )} */}
 
+        {/* Main Content */}
         <Box
           sx={{
             flex: 1,
@@ -227,28 +293,30 @@ export default function App() {
             flexDirection: "column",
             px: 3,
             pb: 3,
-            pt: user ? 1 : 0,
+            pt: 0,
             overflowY: "auto",
-            backgroundColor: "#f9fafc",
           }}
         >
-          <Box
-            sx={{
-              flex: 1,
-              minHeight: 0,
-              backgroundColor: "white",
-              borderRadius: 2,
-              boxShadow: "0 8px 24px rgba(15, 23, 42, 0.06)",
-              border: "1px solid rgba(148, 163, 184, 0.2)",
-              overflow: "hidden",
-            }}
-          >
-            {user ? (
-              renderPage()
-            ) : (
-              <SignInPage setAttentionItem={setAttentionItem} />
-            )}
-          </Box>
+          <Fade in timeout={400}>
+            <Box
+              sx={{
+                flex: 1,
+                minHeight: 0,
+                bgcolor: "background.paper",
+                borderRadius: 3,
+                overflow: "hidden",
+                border: "1px solid",
+                borderColor: "divider",
+                boxShadow: "0 4px 20px rgba(0, 0, 0, 0.04)",
+              }}
+            >
+              {user ? (
+                renderPage()
+              ) : (
+                <SignInPage setAttentionItem={setAttentionItem} />
+              )}
+            </Box>
+          </Fade>
         </Box>
       </Paper>
     </Box>
