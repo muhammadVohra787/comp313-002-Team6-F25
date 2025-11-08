@@ -25,7 +25,6 @@ body {
   flex-direction: column;
   height: 560px;
   width: 520px;
-  padding: 16px;
   box-sizing: border-box;
   animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
