@@ -2,12 +2,42 @@ from flask import jsonify, request
 from config.database import get_db
 from utils.jwt_utils import validate_token
 from bson.objectid import ObjectId
-import gridfs  # ← You forgot to import this
+import gridfs
 from utils.files_utils import extract_text_from_file
 import io
 from utils.user_utils import check_attention_needed
 from flask import send_file
 from bson import ObjectId
+from werkzeug.utils import secure_filename
+import mimetypes
+
+try:
+    import magic
+    HAS_MAGIC = True
+except Exception:
+    HAS_MAGIC = False
+
+ALLOWED_EXTS = {"pdf", "doc", "docx", "txt"}
+ALLOWED_MIME_PREFIXES = {
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/plain",
+}
+
+def is_allowed_extension(filename: str) -> bool:
+    if not filename or "." not in filename:
+        return False
+    return filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTS
+
+def sniff_mime(file_bytes: bytes, fallback: str | None) -> str:
+    if HAS_MAGIC:
+        # Detect from content
+        return magic.from_buffer(file_bytes[:4096], mime=True) or (fallback or "")
+    # Fallback to provided content_type or guess by extension
+    if fallback:
+        return fallback
+    return mimetypes.guess_type("x." + "bin")[0] or ""
 
 def init_profile_routes(app):
     @app.route('/api/profile', methods=['GET'])
@@ -105,8 +135,6 @@ def init_profile_routes(app):
             "user": user
         }), 200
 
-
-
     @app.route('/api/profile/resume', methods=['GET'])
     def download_resume():
         db = get_db()
@@ -148,61 +176,75 @@ def init_profile_routes(app):
         payload = validate_token(token.removeprefix("Bearer ").strip())
         user_id = payload.get("id")
 
-        file = request.files.get("file")
-        if not file:
+        up = request.files.get("file")
+        if not up:
             return jsonify({"error": "No file uploaded"}), 400
 
-        # Extract text and reset buffer
-        file_bytes = io.BytesIO(file.read())
-        resume_text = extract_text_from_file(file_bytes, file.filename)
-        file_bytes.seek(0)
+        # Extension gate
+        filename = secure_filename(up.filename or "")
+        if not is_allowed_extension(filename):
+            return jsonify({"error": "Unsupported file type. Only .pdf, .doc, .docx, .txt allowed."}), 400
 
-        # Remove old resume if exists
+        # Read once into memory for sniff + extraction; reset later
+        raw = up.read()
+        if not raw:
+            return jsonify({"error": "Empty file"}), 400
+
+        # MIME sniff
+        detected_mime = sniff_mime(raw, up.content_type)
+        if not any(detected_mime.startswith(prefix) for prefix in ALLOWED_MIME_PREFIXES):
+            return jsonify({"error": f"Unsupported MIME type: {detected_mime}"}), 400
+
+        # Extract text
+        file_buf = io.BytesIO(raw)
+        resume_text = extract_text_from_file(file_buf, filename)
+        # If extraction function flags unsupported, block save
+        if resume_text.strip() in {"[Unsupported file type]"}:
+            return jsonify({"error": "Unsupported file type"}), 400
+
+        # Block empty extractions for pdf/docx
+        if filename.lower().endswith((".pdf", ".doc", ".docx")) and not resume_text.strip():
+            return jsonify({"error": "Could not extract text. Please upload a text-based PDF/DOCX."}), 422
+
+        file_buf.seek(0)
+
+        # Only now delete the old resume
         existing_resume = db.user_resume.find_one({"user_id": ObjectId(user_id)})
         if existing_resume:
-            fs.delete(existing_resume["resume_file"])
+            try:
+                fs.delete(existing_resume["resume_file"])
+            except Exception:
+                # If GridFS blob missing, continue with metadata cleanup
+                pass
             db.user_resume.delete_one({"_id": existing_resume["_id"]})
 
-        # Save new resume in GridFS
-        file_id = fs.put(file_bytes, filename=file.filename, content_type=file.content_type)
-
-        # Save resume metadata
+        # Save new resume
+        file_id = fs.put(file_buf, filename=filename, content_type=detected_mime or up.content_type)
         resume_data = {
             "user_id": ObjectId(user_id),
-            "file_name": file.filename,
+            "file_name": filename,
             "resume_text": resume_text,
             "resume_file": file_id,
         }
         resume_id = db.user_resume.insert_one(resume_data).inserted_id
 
-        # Prepare updates for user
-        update_fields = {
-            "latest_resume_id": resume_id,
-        }
-
-        # Compute attention_needed in one go
+        # Update user & attention flag
+        update_fields = {"latest_resume_id": resume_id}
         user = db.users.find_one({"_id": ObjectId(user_id)})
         user.update(update_fields)
         update_fields["attention_needed"] = check_attention_needed(user)
-
-        # Update user in DB
         db.users.update_one({"_id": ObjectId(user_id)}, {"$set": update_fields})
 
-        # Convert user object for response
+        # Response
         user.update(update_fields)
         user["_id"] = str(user["_id"])
-        for key, value in user.items():
-            if isinstance(value, ObjectId):
-                user[key] = str(value)
-
-        # Populate resume info
+        for k, v in list(user.items()):
+            if isinstance(v, ObjectId):
+                user[k] = str(v)
         user["resume"] = {
-            "file_name": file.filename,
+            "file_name": filename,
             "text": resume_text,
             "id": str(resume_id),
         }
 
-        return jsonify({
-            "message": "Resume uploaded successfully",
-            "user": user
-        }), 201
+        return jsonify({"message": "Resume uploaded successfully", "user": user}), 201
