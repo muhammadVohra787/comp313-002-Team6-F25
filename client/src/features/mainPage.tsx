@@ -772,8 +772,13 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                     bgcolor: "background.paper",
                     border: "1px solid",
                     borderColor: "divider",
-                    maxHeight: 240,
-                    overflowY: "hidden",
+                    maxHeight: 360,
+                    overflowY: "auto",
+                    "&::-webkit-scrollbar": { width: 6 },
+                    "&::-webkit-scrollbar-thumb": {
+                      backgroundColor: "rgba(0,0,0,0.2)",
+                      borderRadius: 3,
+                    },
                   }}
                 >
                   <TextField
