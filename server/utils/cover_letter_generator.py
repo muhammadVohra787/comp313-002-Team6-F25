@@ -13,7 +13,7 @@ GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel("gemini-2.0-flash-exp")
+    model = genai.GenerativeModel("gemini-2.5-flash-lite")
 else:
     model = None
     print("WARNING: GEMINI_API_KEY not set - cover letter generation will fail")
