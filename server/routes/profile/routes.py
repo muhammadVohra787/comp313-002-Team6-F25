@@ -11,13 +11,17 @@ from bson import ObjectId
 from werkzeug.utils import secure_filename
 import mimetypes
 
+# Optional file-type detection using python-magic (if installed)
 try:
     import magic
     HAS_MAGIC = True
 except Exception:
     HAS_MAGIC = False
 
+# Allowed file extensions for resume upload
 ALLOWED_EXTS = {"pdf", "doc", "docx", "txt"}
+
+# Allowed MIME-type prefixes for extra safety
 ALLOWED_MIME_PREFIXES = {
     "application/pdf",
     "application/msword",
@@ -26,15 +30,20 @@ ALLOWED_MIME_PREFIXES = {
 }
 
 def is_allowed_extension(filename: str) -> bool:
+    """Check if uploaded filename has an allowed extension."""
     if not filename or "." not in filename:
         return False
     return filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTS
 
 def sniff_mime(file_bytes: bytes, fallback: str | None) -> str:
+    """
+    Try to detect MIME type from file content.
+    If python-magic is not available, fall back to provided content_type or guess.
+    """
     if HAS_MAGIC:
-        # Detect from content
+        # Use content-based detection
         return magic.from_buffer(file_bytes[:4096], mime=True) or (fallback or "")
-    # Fallback to provided content_type or guess by extension
+    # Fallback to client-provided content_type or extension-based guess
     if fallback:
         return fallback
     return mimetypes.guess_type("x." + "bin")[0] or ""
@@ -42,8 +51,10 @@ def sniff_mime(file_bytes: bytes, fallback: str | None) -> str:
 def init_profile_routes(app):
     @app.route('/api/profile', methods=['GET'])
     def profile():
+        # Get DB instance
         db = get_db()
 
+        # Get and validate JWT from Authorization header
         token = request.headers.get("Authorization")
         if not token:
             return jsonify({"error": "Authorization header missing"}), 401
@@ -56,16 +67,17 @@ def init_profile_routes(app):
             return jsonify({"error": f"Invalid token: {str(e)}"}), 401
 
         try:
+            # Fetch user by ID
             user = db.users.find_one({"_id": ObjectId(user_id)})
             if not user:
                 return jsonify({"error": "User not found"}), 404
 
-            # Convert top-level ObjectIds to strings
+            # Convert any ObjectId at top level to string for JSON
             for key, value in user.items():
                 if isinstance(value, ObjectId):
                     user[key] = str(value)
 
-            # Populate resume info if exists
+            # If user has uploaded a resume before, attach its info
             latest_resume = None
             if "latest_resume_id" in user and user["latest_resume_id"]:
                 latest_resume = db.user_resume.find_one({"_id": ObjectId(user["latest_resume_id"])})
@@ -85,25 +97,27 @@ def init_profile_routes(app):
             return jsonify({"error": f"Error fetching user: {str(e)}"}), 500
 
     # -------------------------------
-    # Upload Resume Route
+    # Update Profile (basic fields)
     # -------------------------------
-
     @app.route('/api/profile', methods=['POST'])
     def update_profile():
         db = get_db()
+
+        # Require valid token to update profile
         token = request.headers.get("Authorization")
         if not token:
             return jsonify({"error": "Missing token"}), 401
 
-        # Validate JWT and get user ID
+        # Validate JWT and extract user ID
         payload = validate_token(token.removeprefix("Bearer ").strip())
         user_id = payload.get("id")
 
+        # Get JSON body
         data = request.get_json()
         if not data:
             return jsonify({"error": "No data provided"}), 400
 
-        # Only allow updates to these fields
+        # Only allow certain profile fields to be updated
         allowed_fields = {
             "name", "city", "country", "postal_code", "personal_prompt"
         }
@@ -117,17 +131,17 @@ def init_profile_routes(app):
         if not user:
             return jsonify({"error": "User not found"}), 404
 
-        # Apply updates locally
+        # Update in-memory user dict
         user.update(update_data)
 
-        # Check if attention is needed
+        # Recalculate attention flag based on updated profile
         attention_needed = check_attention_needed(user)
         user["attention_needed"] = attention_needed
 
-        # Update DB
+        # Save changes to DB
         db.users.update_one({"_id": ObjectId(user_id)}, {"$set": user})
 
-        # Convert ObjectId to string for JSON response
+        # Convert ObjectId for response
         user["_id"] = str(user["_id"])
 
         return jsonify({
@@ -135,11 +149,15 @@ def init_profile_routes(app):
             "user": user
         }), 200
 
+    # -------------------------------
+    # Download latest resume
+    # -------------------------------
     @app.route('/api/profile/resume', methods=['GET'])
     def download_resume():
         db = get_db()
         fs = gridfs.GridFS(db)
 
+        # Check token
         token = request.headers.get("Authorization")
         if not token:
             return jsonify({"error": "Missing token"}), 401
@@ -147,6 +165,7 @@ def init_profile_routes(app):
         payload = validate_token(token.removeprefix("Bearer ").strip())
         user_id = payload.get("id")
 
+        # Find user and their latest resume
         user = db.users.find_one({"_id": ObjectId(user_id)})
         if not user or "latest_resume_id" not in user:
             return jsonify({"error": "No resume found"}), 404
@@ -155,7 +174,7 @@ def init_profile_routes(app):
         if not resume:
             return jsonify({"error": "Resume not found"}), 404
 
-        # Stream file from GridFS
+        # Fetch actual file contents from GridFS
         grid_out = fs.get(resume["resume_file"])
         return send_file(
             grid_out,
@@ -164,11 +183,15 @@ def init_profile_routes(app):
             mimetype=grid_out.content_type
         )
     
+    # -------------------------------
+    # Upload / Replace resume
+    # -------------------------------
     @app.route('/api/profile/resume', methods=['POST'])
     def upload_resume():
         db = get_db()
         fs = gridfs.GridFS(db)
 
+        # Require token
         token = request.headers.get("Authorization")
         if not token:
             return jsonify({"error": "Missing token"}), 401
@@ -176,50 +199,55 @@ def init_profile_routes(app):
         payload = validate_token(token.removeprefix("Bearer ").strip())
         user_id = payload.get("id")
 
+        # Get uploaded file from form-data
         up = request.files.get("file")
         if not up:
             return jsonify({"error": "No file uploaded"}), 400
 
-        # Extension gate
+        # Sanitize filename and check extension
         filename = secure_filename(up.filename or "")
         if not is_allowed_extension(filename):
             return jsonify({"error": "Unsupported file type. Only .pdf, .doc, .docx, .txt allowed."}), 400
 
-        # Read once into memory for sniff + extraction; reset later
+        # Read file bytes once (for mime sniff and text extraction)
         raw = up.read()
         if not raw:
             return jsonify({"error": "Empty file"}), 400
 
-        # MIME sniff
+        # Detect MIME type from content or fallback
         detected_mime = sniff_mime(raw, up.content_type)
         if not any(detected_mime.startswith(prefix) for prefix in ALLOWED_MIME_PREFIXES):
             return jsonify({"error": f"Unsupported MIME type: {detected_mime}"}), 400
 
-        # Extract text
+        # Extract resume text (this is used later for cover letter prompts, etc.)
         file_buf = io.BytesIO(raw)
         resume_text = extract_text_from_file(file_buf, filename)
-        # If extraction function flags unsupported, block save
+
+        # If extractor says unsupported, stop here
         if resume_text.strip() in {"[Unsupported file type]"}:
             return jsonify({"error": "Unsupported file type"}), 400
 
-        # Block empty extractions for pdf/docx
+        # For PDF/DOC/DOCX we expect non-empty extracted text
         if filename.lower().endswith((".pdf", ".doc", ".docx")) and not resume_text.strip():
             return jsonify({"error": "Could not extract text. Please upload a text-based PDF/DOCX."}), 422
 
+        # Reset pointer before saving to GridFS
         file_buf.seek(0)
 
-        # Only now delete the old resume
+        # If user already has a resume, remove old file + metadata
         existing_resume = db.user_resume.find_one({"user_id": ObjectId(user_id)})
         if existing_resume:
             try:
                 fs.delete(existing_resume["resume_file"])
             except Exception:
-                # If GridFS blob missing, continue with metadata cleanup
+                # If file missing in GridFS, still delete DB record
                 pass
             db.user_resume.delete_one({"_id": existing_resume["_id"]})
 
-        # Save new resume
+        # Save new resume file into GridFS
         file_id = fs.put(file_buf, filename=filename, content_type=detected_mime or up.content_type)
+
+        # Save resume metadata into separate collection
         resume_data = {
             "user_id": ObjectId(user_id),
             "file_name": filename,
@@ -228,14 +256,14 @@ def init_profile_routes(app):
         }
         resume_id = db.user_resume.insert_one(resume_data).inserted_id
 
-        # Update user & attention flag
+        # Update user record with latest resume ID and attention flag
         update_fields = {"latest_resume_id": resume_id}
         user = db.users.find_one({"_id": ObjectId(user_id)})
         user.update(update_fields)
         update_fields["attention_needed"] = check_attention_needed(user)
         db.users.update_one({"_id": ObjectId(user_id)}, {"$set": update_fields})
 
-        # Response
+        # Build clean response
         user.update(update_fields)
         user["_id"] = str(user["_id"])
         for k, v in list(user.items()):

@@ -1,9 +1,13 @@
 // frontend-job-extractor.ts
+// This module figures out which job site the user is on,
+// extracts the job details from the DOM, and returns a unified payload
+// that the rest of the extension can use.
 
 import { JobDescription } from "../models/coverLetter";
 import { extractLinkedInDetails } from "./linkedinExtractor";
 import { getHtmlContent, getTextContent, normalizeText } from "./domUtils";
 
+// Known job sites we want to recognize
 export enum JobSite {
   LINKEDIN = "LinkedIn",
   GOOGLE = "Google Jobs",
@@ -15,6 +19,8 @@ export enum JobSite {
   DEFAULT = "Default",
 }
 
+// Internal shape for data we extract from the page
+// (this later becomes part of JobDescription)
 type ExtractedJobDetails = {
   jobDescription: string;
   jobTitle: string | null;
@@ -22,23 +28,32 @@ type ExtractedJobDetails = {
   location: string | null;
 };
 
+// Try to detect which job site we're on based on the URL
 export function detectJobSite(url: string): JobSite {
   if (url.includes("linkedin.com")) return JobSite.LINKEDIN;
-  if (url.includes("google.com") && url.includes("search")) return JobSite.GOOGLE;
+  if (url.includes("google.com") && url.includes("search"))
+    return JobSite.GOOGLE;
   if (url.includes("indeed.com")) return JobSite.INDEED;
   if (url.includes("monster.com")) return JobSite.MONSTER;
   if (url.includes("glassdoor.com")) return JobSite.GLASSDOOR;
   if (url.includes("careerbuilder.com")) return JobSite.CAREERBUILDER;
   if (url.includes("dice.com")) return JobSite.DICE;
+  // fallback for unknown sites
   return JobSite.DEFAULT;
 }
 
+// -----------------------------
+// Site-specific extractors
+// -----------------------------
+
 function extractIndeed(root: HTMLElement): ExtractedJobDetails {
+  // Try the most common Indeed job description containers
   const descriptionEl =
     root.querySelector<HTMLElement>("#jobDescriptionText") ||
     root.querySelector<HTMLElement>(".jobsearch-JobComponent-description") ||
     root.querySelector<HTMLElement>(".job-description");
 
+  // Try multiple selectors because Indeed changes layout often
   const jobTitle = getTextContent(root, [
     ".jobsearch-JobInfoHeader-title",
     "h1.jobsearch-JobInfoHeader-title",
@@ -72,6 +87,7 @@ function extractIndeed(root: HTMLElement): ExtractedJobDetails {
 }
 
 function extractMonster(root: HTMLElement): ExtractedJobDetails {
+  // Monster also uses a few different wrappers for the description
   const descriptionEl =
     root.querySelector<HTMLElement>(".job-description") ||
     root.querySelector<HTMLElement>("#JobDescription") ||
@@ -106,6 +122,7 @@ function extractMonster(root: HTMLElement): ExtractedJobDetails {
 }
 
 function extractGlassdoor(root: HTMLElement): ExtractedJobDetails {
+  // Glassdoor uses jobDescription / containers inside its job view
   const descriptionEl =
     root.querySelector<HTMLElement>(".jobDescription") ||
     root.querySelector<HTMLElement>("#JobDescriptionContainer") ||
@@ -141,32 +158,36 @@ function extractGlassdoor(root: HTMLElement): ExtractedJobDetails {
 }
 
 function extractGoogleJobs(): ExtractedJobDetails {
+  // Google Jobs is rendered inside a special panel, so we query document directly
   const container =
     document.querySelector<HTMLElement>('div[jsname="sAN0nc"]') ||
     document.querySelector<HTMLElement>('div[jsname="Ym07we"]') ||
-    document.querySelector<HTMLElement>('.job-description');
+    document.querySelector<HTMLElement>(".job-description");
 
   const jobTitle = getTextContent(document, [
     'div[jsname="rOoJdc"]',
     'h2[data-profile-section-id="TITLE_SECTION"]',
-    'h1',
-    '.job-title',
+    "h1",
+    ".job-title",
   ]);
 
   const companyName = getTextContent(document, [
     'div[jsname="Nv5hHc"]',
     'div[data-profile-section-id="COMPANY"]',
-    '.company-name',
+    ".company-name",
   ]);
 
   const location = getTextContent(document, [
     'div[jsname="V0cE1c"]',
     'div[data-profile-section-id="LOCATION"]',
-    '.job-location',
+    ".job-location",
   ]);
 
-
-  console.log("[GoogleJobs] Desc length:", getHtmlContent(container)?.length || 0);
+  // helpful logging during debugging
+  console.log(
+    "[GoogleJobs] Desc length:",
+    getHtmlContent(container)?.length || 0
+  );
 
   return {
     jobDescription: getHtmlContent(container),
@@ -176,27 +197,27 @@ function extractGoogleJobs(): ExtractedJobDetails {
   };
 }
 
-
+// Fallback extractor for sites we don't explicitly support
 function extractFallback(root: HTMLElement): ExtractedJobDetails {
-  // Try multiple strategies for unknown sites
+  // Try to grab job title from common places or just use page title
   const jobTitle = normalizeText(
     root.querySelector("h1")?.textContent ||
-    root.querySelector(".job-title")?.textContent ||
-    root.querySelector(".title")?.textContent ||
-    document.title ||
-    ""
+      root.querySelector(".job-title")?.textContent ||
+      root.querySelector(".title")?.textContent ||
+      document.title ||
+      ""
   );
 
-  // Try to find the main content area
+  // Try to find a "main" block that looks like job content
   const descriptionEl =
     root.querySelector<HTMLElement>("main") ||
     root.querySelector<HTMLElement>("article") ||
     root.querySelector<HTMLElement>(".job-description") ||
     root.querySelector<HTMLElement>(".description") ||
     root.querySelector<HTMLElement>(".content") ||
-    root;
+    root; // last resort: entire page
 
-  // Try to extract company name from various patterns
+  // Try to extract company name from likely selectors
   const companyName = getTextContent(root, [
     ".company-name",
     ".employer",
@@ -206,7 +227,7 @@ function extractFallback(root: HTMLElement): ExtractedJobDetails {
     ".job-company",
   ]);
 
-  // Try to extract location from various patterns
+  // Try to extract location from likely selectors
   const location = getTextContent(root, [
     ".job-location",
     ".location",
@@ -222,12 +243,19 @@ function extractFallback(root: HTMLElement): ExtractedJobDetails {
   };
 }
 
+// -----------------------------
+// Public function: buildPayload
+// -----------------------------
+// This is what the content script calls.
+// It figures out which site we're on, runs the right extractor,
+// and returns a JobDescription that the backend expects.
 export function buildPayload(url: string, root: HTMLElement): JobDescription {
   const jobSite = detectJobSite(url);
   let details: ExtractedJobDetails;
 
   switch (jobSite) {
     case JobSite.LINKEDIN:
+      // LinkedIn has its own extractor because its DOM is very custom
       details = extractLinkedInDetails(root);
       break;
     case JobSite.INDEED:
@@ -243,18 +271,18 @@ export function buildPayload(url: string, root: HTMLElement): JobDescription {
       details = extractGlassdoor(root);
       break;
     default:
+      // fallback for any unknown job board
       details = extractFallback(root);
       break;
   }
 
+  // Wrap everything in the shape the backend expects
   return {
     url,
     jobDescription: details.jobDescription,
     jobTitle: details.jobTitle,
     companyName: details.companyName,
     location: details.location,
-    source: jobSite,
+    source: jobSite, // store where we scraped it from
   };
 }
-
-
