@@ -156,11 +156,11 @@ export default function App() {
           minHeight: 0,
           display: "flex",
           flexDirection: "column",
-          borderRadius: 4,
           overflow: "hidden",
           boxShadow: "0 20px 60px rgba(0, 0, 0, 0.12)",
           border: "1px solid",
           borderColor: "divider",
+          borderRadius: 0,
         }}
       >
         {/* Header */}
@@ -291,8 +291,8 @@ export default function App() {
             minHeight: 0,
             display: "flex",
             flexDirection: "column",
-            px: 3,
-            pb: 3,
+            px: 0,
+            pb: 0,
             pt: 0,
             overflowY: "auto",
           }}
