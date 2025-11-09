@@ -294,18 +294,45 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
               >
                 Extract Job Details
               </Typography>
-              <Typography 
-                variant="caption" 
-                sx={{ 
-                  color: 'text.secondary',
-                  fontSize: '0.8rem',
-                  lineHeight: 1.4
-                }}
-              >
-                {scrapedData 
-                  ? `Last scraped: ${scrapedData.jobTitle || scrapedData.companyName || 'Job details loaded'}` 
-                  : 'Analyze the current job posting'}
-              </Typography>
+              {scrapedData ? (
+                <Box>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 700,
+                      color: 'text.primary',
+                      lineHeight: 1.4
+                    }}
+                  >
+                    {scrapedData.jobTitle || 'Job title unavailable'}
+                  </Typography>
+                  {scrapedData.companyName && (
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: 'text.secondary',
+                        fontSize: '0.8rem',
+                        lineHeight: 1.4,
+                        display: 'block',
+                        mt: 0.25
+                      }}
+                    >
+                      {scrapedData.companyName}
+                    </Typography>
+                  )}
+                </Box>
+              ) : (
+                <Typography 
+                  variant="caption" 
+                  sx={{ 
+                    color: 'text.secondary',
+                    fontSize: '0.8rem',
+                    lineHeight: 1.4
+                  }}
+                >
+                  Analyze the current job posting
+                </Typography>
+              )}
             </Box>
           </Box>
 
