@@ -276,3 +276,49 @@ def init_profile_routes(app):
         }
 
         return jsonify({"message": "Resume uploaded successfully", "user": user}), 201
+
+    @app.route('/api/profile/resume', methods=['DELETE'])
+    def delete_resume():
+        db = get_db()
+        fs = gridfs.GridFS(db)
+
+        token = request.headers.get("Authorization")
+        if not token:
+            return jsonify({"error": "Missing token"}), 401
+
+        payload = validate_token(token.removeprefix("Bearer ").strip())
+        user_id = payload.get("id")
+
+        user = db.users.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        resume_id = user.get("latest_resume_id")
+        if not resume_id:
+            return jsonify({"error": "No resume to delete"}), 404
+
+        resume = db.user_resume.find_one({"_id": ObjectId(resume_id)})
+        if resume:
+            try:
+                fs.delete(resume["resume_file"])
+            except Exception:
+                pass
+            db.user_resume.delete_one({"_id": resume["_id"]})
+
+        # Remove resume reference from user and recompute attention flag
+        db.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {
+                "$unset": {"latest_resume_id": ""},
+                "$set": {"attention_needed": check_attention_needed({k: v for k, v in user.items() if k != "latest_resume_id"})},
+            },
+        )
+
+        updated_user = db.users.find_one({"_id": ObjectId(user_id)})
+        updated_user["_id"] = str(updated_user["_id"])
+        for key, value in list(updated_user.items()):
+            if isinstance(value, ObjectId):
+                updated_user[key] = str(value)
+        updated_user["resume"] = None
+
+        return jsonify({"message": "Resume deleted successfully", "user": updated_user}), 200

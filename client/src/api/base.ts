@@ -138,6 +138,28 @@ async function multipartGetWithAuth(endpoint: string) {
   return response;
 }
 
+// -----------------------------
+// DELETE request with auth
+// -----------------------------
+async function deleteWithAuth(endpoint: string) {
+  const token = await getToken();
+  if (!token) throw new Error("Missing auth token");
+
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`DELETE ${endpoint} failed: ${response.status}${text ? ` - ${text}` : ""}`);
+  }
+
+  return response.json();
+}
+
 // Export reusable API functions for use across the extension
 export {
   getWithAuth,
@@ -145,4 +167,5 @@ export {
   apiPost,
   multipartPostWithAuth,
   multipartGetWithAuth,
+  deleteWithAuth,
 };
