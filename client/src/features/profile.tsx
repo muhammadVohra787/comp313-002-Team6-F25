@@ -5,6 +5,7 @@ import {
   multipartGetWithAuth,
   multipartPostWithAuth,
   postWithAuth,
+  deleteWithAuth,
 } from "../api/base";
 import {
   Box,
@@ -26,6 +27,7 @@ import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import DescriptionIcon from "@mui/icons-material/Description";
 import LogoutIcon from "@mui/icons-material/Logout";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 
 export default function Profile({
   setAttentionItem,
@@ -113,6 +115,7 @@ export default function Profile({
       const response = await multipartPostWithAuth("/profile/resume", formData);
       if (response?.user) {
         setUser(response.user);
+        setFormData(response.user);
       }
       setAttentionItem("profile", response?.user?.attention_needed);
     } catch (err) {
@@ -143,6 +146,25 @@ export default function Profile({
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Error downloading resume:", err);
+    }
+  };
+
+  const handleResumeDelete = async () => {
+    if (!user?.resume) return;
+    const confirmed = window.confirm(
+      "Delete your uploaded resume? This cannot be undone."
+    );
+    if (!confirmed) return;
+
+    try {
+      const response = await deleteWithAuth("/profile/resume");
+      if (response?.user) {
+        setUser(response.user);
+        setFormData(response.user);
+      }
+      setAttentionItem("profile", response?.user?.attention_needed);
+    } catch (err) {
+      console.error("Error deleting resume:", err);
     }
   };
 
@@ -275,19 +297,39 @@ export default function Profile({
                 </Typography>
               )}
             </Box>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<UploadFileIcon />}
-              onClick={() => setOpen(true)}
-              sx={{
-                borderRadius: 2,
-                textTransform: "none",
-                fontWeight: 600,
-              }}
-            >
-              {user?.resume ? "Replace" : "Upload"}
-            </Button>
+            <Stack direction="row" spacing={1}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<UploadFileIcon />}
+                onClick={() => setOpen(true)}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 600,
+                }}
+              >
+                {user?.resume ? "Replace" : "Upload"}
+              </Button>
+              {user?.resume && (
+                <Button
+                  variant="text"
+                  size="small"
+                  color="error"
+                  startIcon={<DeleteForeverIcon />}
+                  onClick={handleResumeDelete}
+                  sx={{
+                    textTransform: "none",
+                    fontWeight: 600,
+                    "&:hover": {
+                      backgroundColor: "rgba(239, 68, 68, 0.08)",
+                    },
+                  }}
+                >
+                  Delete
+                </Button>
+              )}
+            </Stack>
           </Stack>
         </Box>
 
