@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import SignInPage from "./features/signInPage";
 import MainPage from "./features/mainPage";
+import HistoryPage from "./features/historyPage";
 import { getWithAuth } from "./api/base";
 import {
   Avatar,
@@ -119,20 +120,7 @@ export default function App() {
       case "home":
         return <MainPage isAuthenticated={!!user} />;
       case "history":
-        return (
-          <Box
-            sx={{
-              height: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Typography variant="h6" color="text.secondary">
-              History Coming Soon
-            </Typography>
-          </Box>
-        );
+        return <HistoryPage />;
       case "profile":
         return <Profile setAttentionItem={setAttentionItem} onLogout={handleLogout} />;
       default:
