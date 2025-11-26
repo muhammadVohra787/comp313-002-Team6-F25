@@ -8,6 +8,7 @@ from utils.cover_letter_generator import (
 )
 from config.database import get_db
 from bson.objectid import ObjectId
+from datetime import datetime
 import os, re
 
 JWT_SECRET = os.getenv("JWT_SECRET", "your-256-bit-secret")
@@ -87,13 +88,15 @@ def init_cover_letter_routes(app):
         user_prompt = data.get("userPrompt", "")
         job_title = data.get("jobTitle")
         company_name = data.get("companyName")
+        job_url = data.get("url")
+        location = data.get("location")
 
         if tone not in get_supported_tones():
             return jsonify({
                 "error": f"Invalid tone '{tone}'. Supported tones: {', '.join(get_supported_tones())}"
             }), 400
 
-        # ---------------- GENERATE COVER LETTER ----------------
+                # ---------------- GENERATE COVER LETTER ----------------
         try:
             cover_letter_markdown = generate_cover_letter(
                 user_info=user_info,
@@ -105,6 +108,81 @@ def init_cover_letter_routes(app):
                 company_name=company_name
             )
             print(cover_letter_markdown)
+
+            try:
+                db = get_db()
+                user_obj_id = ObjectId(user_id)
+                job_url = data.get("url")
+                location = data.get("location")
+
+                # Detect source from URL
+                source = None
+                if job_url:
+                    import re
+
+                    match = re.search(r"https?://([^/]+)/?", job_url)
+                    if match:
+                        source = match.group(1)
+
+                # Find existing history for this user + job URL
+                existing_history = None
+                if job_url:
+                    existing_history = db.job_history.find_one(
+                        {"user_id": user_obj_id, "url": job_url}
+                    )
+
+                if existing_history:
+                    history_id = existing_history["_id"]
+                    # Update basic info in case it changed
+                    db.job_history.update_one(
+                        {"_id": history_id},
+                        {
+                            "$set": {
+                                "job_title": job_title,
+                                "company_name": company_name,
+                                "location": location,
+                                "source": source,
+                                "tone": tone,
+                            }
+                        },
+                    )
+                else:
+                    history_doc = {
+                        "user_id": user_obj_id,
+                        "job_title": job_title,
+                        "company_name": company_name,
+                        "location": location,
+                        "url": job_url,
+                        "source": source,
+                        "status": "Not Applied",
+                        "tone": tone,
+                        "created_at": datetime.utcnow(),
+                    }
+                    result = db.job_history.insert_one(history_doc)
+                    history_id = result.inserted_id
+
+                # Save this cover letter as a new version
+                existing_versions = db.cover_letters.count_documents(
+                    {"history_id": history_id}
+                )
+                version_number = existing_versions + 1
+
+                letter_doc = {
+                    "history_id": history_id,
+                    "user_id": user_obj_id,
+                    "markdown": cover_letter_markdown,
+                    "tone": tone,
+                    "user_prompt": user_prompt,
+                    "created_at": datetime.utcnow(),
+                    "version": version_number,
+                }
+
+                db.cover_letters.insert_one(letter_doc)
+
+            except Exception as history_error:
+                print(f"Failed to save job history / letter versions: {history_error}")
+
+            # ---------------- RESPONSE ----------------
             return jsonify({
                 "markdown": cover_letter_markdown,
                 "clean_job_description": clean_job_description,
@@ -113,12 +191,14 @@ def init_cover_letter_routes(app):
                 "jobTitle": job_title,
                 "companyName": company_name,
                 "location": data.get("location"),
-                "tone": tone
+                "tone": tone,
+                "historyId": str(history_id) if 'history_id' in locals() else None,
+                "version": version_number if 'version_number' in locals() else None
             }), 200
 
         except Exception as e:
             return jsonify({"error": f"Failed to generate cover letter: {str(e)}"}), 500
-
+        
     # ---------------- SUPPORTED TONES ----------------
     @app.route("/api/cover-letter/tones", methods=["GET"])
     def get_tones():
