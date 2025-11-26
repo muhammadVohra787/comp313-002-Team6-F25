@@ -124,7 +124,7 @@ def init_cover_letter_routes(app):
                     if match:
                         source = match.group(1)
 
-                # 1) Find existing history for this user + job URL (if any)
+                # Find existing history for this user + job URL
                 existing_history = None
                 if job_url:
                     existing_history = db.job_history.find_one(
@@ -161,7 +161,7 @@ def init_cover_letter_routes(app):
                     result = db.job_history.insert_one(history_doc)
                     history_id = result.inserted_id
 
-                # 2) Save this cover letter as a new version
+                # Save this cover letter as a new version
                 existing_versions = db.cover_letters.count_documents(
                     {"history_id": history_id}
                 )
@@ -180,7 +180,6 @@ def init_cover_letter_routes(app):
                 db.cover_letters.insert_one(letter_doc)
 
             except Exception as history_error:
-                # Do not block response if history/version saving fails
                 print(f"Failed to save job history / letter versions: {history_error}")
 
             # ---------------- RESPONSE ----------------
@@ -193,7 +192,6 @@ def init_cover_letter_routes(app):
                 "companyName": company_name,
                 "location": data.get("location"),
                 "tone": tone,
-                # helpful if we want later on UI
                 "historyId": str(history_id) if 'history_id' in locals() else None,
                 "version": version_number if 'version_number' in locals() else None
             }), 200

@@ -9,7 +9,7 @@ import csv
 
 def init_history_routes(app):
 
-    # -------- Helper: get current user id from Authorization header --------
+    # Get current user id from Authorization header
     def _get_user_id_from_request():
         token = request.headers.get("Authorization")
         if not token:
@@ -26,9 +26,7 @@ def init_history_routes(app):
         except Exception as e:
             return None, (f"Authentication failed: {str(e)}", 401)
 
-    # ----------------------------------------------------------------------
     # GET /api/history  -> View job application history
-    # ----------------------------------------------------------------------
     @app.route("/api/history", methods=["GET"])
     def get_history():
         """
@@ -71,9 +69,7 @@ def init_history_routes(app):
         except Exception as e:
             return jsonify({"error": f"Failed to fetch history: {str(e)}"}), 500
         
-    # ----------------------------------------------------------------------
     # GET /api/history/<history_id>/letters  -> All cover letter versions
-    # ----------------------------------------------------------------------
     @app.route("/api/history/<history_id>/letters", methods=["GET"])
     def get_history_letters(history_id):
         """
@@ -93,7 +89,7 @@ def init_history_routes(app):
                     "history_id": ObjectId(history_id),
                     "user_id": ObjectId(user_id)
                 })
-                .sort("created_at", 1)  # oldest → newest
+                .sort("created_at", 1)
             )
 
             letters = []
@@ -116,9 +112,7 @@ def init_history_routes(app):
         except Exception as e:
             return jsonify({"error": f"Failed to fetch letter versions: {str(e)}"}), 500
 
-    # ----------------------------------------------------------------------
     # PATCH /api/history/<history_id>/status  -> Mark Applied / Not Applied
-    # ----------------------------------------------------------------------
     @app.route("/api/history/<history_id>/status", methods=["PATCH"])
     def update_history_status(history_id):
         """
@@ -156,9 +150,7 @@ def init_history_routes(app):
         except Exception as e:
             return jsonify({"error": f"Failed to update status: {str(e)}"}), 500
 
-    # ----------------------------------------------------------------------
     # GET /api/history/export  -> Export job history as CSV for Google Sheets
-    # ----------------------------------------------------------------------
     @app.route("/api/history/export", methods=["GET"])
     def export_history():
         """
@@ -182,7 +174,6 @@ def init_history_routes(app):
             output = StringIO()
             writer = csv.writer(output)
 
-            # Header row
             writer.writerow([
                 "Job Title",
                 "Company",
