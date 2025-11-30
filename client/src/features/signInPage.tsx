@@ -20,6 +20,7 @@ import { removeAuth, setAuthData } from "../api/auth";
 import { apiPost } from "../api/base";
 import { AuthResponse } from "../models/userModel";
 import { SetAttentionItem } from "../types";
+import { getGoogleAccessToken } from "../utils/googleIdentity";
 
 export default function SignInPage({
   setAttentionItem,
@@ -37,29 +38,10 @@ export default function SignInPage({
     setLoading(true);
 
     try {
-      // 1. Ask Chrome identity API for Google OAuth token
-      const token = await new Promise<string>((resolve, reject) => {
-        try {
-          chrome.identity.getAuthToken({ interactive: true }, (t: any) => {
-            if (chrome.runtime.lastError) {
-              return reject(new Error(chrome.runtime.lastError.message));
-            }
-            if (!t) return reject(new Error("No token received from Google"));
+      // 1. Get Google OAuth access token
+      const token = await getGoogleAccessToken(true);
 
-            // handle token shape (string vs object)
-            if (typeof t === "string") return resolve(t);
-            if (typeof t === "object" && typeof t.token === "string") {
-              return resolve(t.token);
-            }
-            return reject(
-              new Error("Unexpected token shape from chrome.identity")
-            );
-          });
-        } catch (e: any) {
-          reject(e);
-        }
-      });
-
+      
       // 2. (Optional) Try to fetch Google profile directly from Google
       // so we can send it to our backend as fallback
       let profile: Record<string, any> | undefined;

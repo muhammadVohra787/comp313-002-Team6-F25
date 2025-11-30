@@ -28,6 +28,8 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import LogoutIcon from "@mui/icons-material/Logout";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
+import { getGoogleAccessToken } from "../utils/googleIdentity";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 
 export default function Profile({
   setAttentionItem,
@@ -48,6 +50,8 @@ export default function Profile({
   const [saving, setSaving] = useState(false);
   // show/hide resume upload modal
   const [open, setOpen] = useState(false);
+  // saving resume to Drive
+  const [savingResumeToDrive, setSavingResumeToDrive] = useState(false);
 
   // Fetch profile on mount
   useEffect(() => {
@@ -149,6 +153,44 @@ export default function Profile({
     }
   };
 
+  // Save latest resume from backend to Google Drive
+  const handleSaveResumeToDrive = async () => {
+    if (!user?.resume) return;
+
+    try {
+      setSavingResumeToDrive(true);
+
+      // 1. Get the resume file from backend (same endpoint as Download)
+      const response = await multipartGetWithAuth("/profile/resume");
+      const blob = await response.blob();
+
+      // Try to read filename from header, fallback to "resume"
+      let filename = "resume";
+      const disposition = response.headers.get("content-disposition");
+      if (disposition && disposition.includes("filename=")) {
+        filename = disposition.split("filename=")[1].replace(/"/g, "");
+      }
+
+      // 2. Get a Google access token for Drive
+      const googleToken = await getGoogleAccessToken(true);
+
+      // 3. Build form-data and call the Drive upload endpoint
+      const formData = new FormData();
+      formData.append("file", blob, filename);
+
+      await multipartPostWithAuth("/drive/cover-letter", formData, {
+        "X-Google-Token": googleToken,
+      });
+
+      alert("Resume saved to Google Drive!");
+    } catch (err) {
+      console.error("Error saving resume to Google Drive:", err);
+      alert("Could not save resume to Google Drive. Please try again.");
+    } finally {
+      setSavingResumeToDrive(false);
+    }
+  };
+    
   const handleResumeDelete = async () => {
     if (!user?.resume) return;
     const confirmed = window.confirm(
@@ -252,7 +294,8 @@ export default function Profile({
         <Box
           sx={{
             mb: 3,
-            p: 2,
+            p: 2.5,
+            px: 3,
             borderRadius: 2.5,
             bgcolor: user?.resume
               ? "rgba(16, 185, 129, 0.05)"
@@ -263,41 +306,92 @@ export default function Profile({
               : "rgba(239, 68, 68, 0.2)",
           }}
         >
-          <Stack direction="row" alignItems="center" spacing={2}>
-            <DescriptionIcon
-              color={user?.resume ? "success" : "error"}
-              sx={{ fontSize: 28 }}
-            />
-            <Box sx={{ flex: 1 }}>
-              {user?.resume ? (
-                <>
-                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                    {user.resume.file_name}
-                  </Typography>
-                  <Button
-                    size="small"
-                    startIcon={<DownloadIcon />}
-                    onClick={handleResumeDownload}
-                    sx={{
-                      textTransform: "none",
-                      fontSize: "0.75rem",
-                      p: 0,
-                      minWidth: 0,
-                    }}
-                  >
-                    Download
-                  </Button>
-                </>
-              ) : (
+          {user?.resume ? (
+            <>
+              <Stack
+                direction="row"
+                spacing={2}
+                alignItems="center"
+                sx={{ mb: 1 }}
+              >
+                <DescriptionIcon
+                  color="success"
+                  sx={{ fontSize: 28 }}
+                />
+                <Typography
+                  variant="subtitle1"
+                  sx={{ fontWeight: 700 }}
+                >
+                  {user.resume.file_name}
+                </Typography>
+              </Stack>
+
+              <Stack
+                direction="row"
+                spacing={1.4}
+                sx={{
+                  "& .MuiButton-root": {
+                    minWidth: "auto",
+                    px: 1.4,
+                    py: 0.4,
+                    height: 34,
+                    borderRadius: 2,
+                    textTransform: "none",
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    whiteSpace: "nowrap",
+                  },
+                }}
+              >
+                <Button
+                  variant="text"
+                  startIcon={<DownloadIcon />}
+                  onClick={handleResumeDownload}
+                  sx={{ color: "primary.main" }}
+                >
+                  Download
+                </Button>
+
+                <Button
+                  variant="outlined"
+                  startIcon={<UploadFileIcon />}
+                  onClick={() => setOpen(true)}
+                >
+                  Replace
+                </Button>
+
+                <Button
+                  variant="outlined"
+                  startIcon={<CloudUploadIcon />}
+                  onClick={handleSaveResumeToDrive}
+                  disabled={savingResumeToDrive}
+                >
+                  {savingResumeToDrive ? "Saving..." : "Save to Drive"}
+                </Button>
+
+                <Button
+                  variant="text"
+                  onClick={handleResumeDelete}
+                  sx={{ color: "error.main" }}
+                >
+                  Delete
+                </Button>
+              </Stack>
+            </>
+          ) : (
+            <Stack direction="row" alignItems="center" spacing={2}>
+              <DescriptionIcon
+                color="error"
+                sx={{ fontSize: 28 }}
+              />
+              <Box sx={{ flex: 1 }}>
                 <Typography
                   variant="body2"
                   sx={{ fontWeight: 600, color: "error.main" }}
                 >
                   You must upload a resume
                 </Typography>
-              )}
-            </Box>
-            <Stack direction="row" spacing={1}>
+              </Box>
               <Button
                 variant="outlined"
                 size="small"
@@ -309,29 +403,12 @@ export default function Profile({
                   fontWeight: 600,
                 }}
               >
-                {user?.resume ? "Replace" : "Upload"}
+                Upload
               </Button>
-              {user?.resume && (
-                <Button
-                  variant="text"
-                  size="small"
-                  color="error"
-                  startIcon={<DeleteForeverIcon />}
-                  onClick={handleResumeDelete}
-                  sx={{
-                    textTransform: "none",
-                    fontWeight: 600,
-                    "&:hover": {
-                      backgroundColor: "rgba(239, 68, 68, 0.08)",
-                    },
-                  }}
-                >
-                  Delete
-                </Button>
-              )}
             </Stack>
-          </Stack>
+          )}
         </Box>
+
 
         {/* Resume upload modal (file picker) */}
         <ResumeUploadModal

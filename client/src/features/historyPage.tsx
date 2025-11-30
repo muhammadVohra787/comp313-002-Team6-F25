@@ -33,9 +33,11 @@ import HistoryIcon from "@mui/icons-material/History";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-
-import { getWithAuth } from "../api/base";
+import { getWithAuth, multipartPostWithAuth } from "../api/base";
 import { getAuthData } from "../api/auth";
+import { getGoogleAccessToken } from "../utils/googleIdentity";
+import { buildCoverLetterWordHtml } from "../utils/coverLetterExport";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 
 interface HistoryItem {
   id: string;
@@ -78,6 +80,9 @@ const HistoryPage: React.FC = () => {
   const [versions, setVersions] = useState<LetterVersion[]>([]);
   const [selectedVersionIndex, setSelectedVersionIndex] = useState<number>(0);
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
+  const [savingVersionToDrive, setSavingVersionToDrive] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
 
   useEffect(() => {
     const loadHistory = async () => {
@@ -128,6 +133,66 @@ const HistoryPage: React.FC = () => {
     }
   };
 
+  const handleSaveSelectedVersionToDrive = async () => {
+    if (
+      !selectedHistoryItem ||
+      versions.length === 0 ||
+      selectedVersionIndex < 0 ||
+      selectedVersionIndex >= versions.length
+    ) {
+      return;
+    }
+
+    try {
+      setSavingVersionToDrive(true);
+      setSaveMessage(null);
+
+      const version = versions[selectedVersionIndex];
+
+      // 1. Build Word-compatible HTML just like on the main page
+      const html = buildCoverLetterWordHtml(
+        version.markdown,
+        selectedHistoryItem.jobTitle,
+        selectedHistoryItem.companyName
+      );
+
+      const blob = new Blob([html], { type: "application/msword" });
+
+      // 2. Build a nice filename
+      const dateStr = new Date().toISOString().split("T")[0];
+      const jobSafe =
+        selectedHistoryItem.jobTitle?.replace(/[^\w\-]+/g, "_") || "job";
+      const versionSuffix =
+        typeof version.version === "number" ? `_v${version.version}` : "";
+      const filename = `CoverLetter_${jobSafe}${versionSuffix}_${dateStr}.doc`;
+
+      // 3. Get Google access token
+      const googleToken = await getGoogleAccessToken(true);
+
+      // 4. Build form data and upload via backend
+      const formData = new FormData();
+      formData.append("file", blob, filename);
+
+      if (selectedHistoryItem.jobTitle) {
+        formData.append("jobTitle", selectedHistoryItem.jobTitle);
+      }
+      if (selectedHistoryItem.companyName) {
+        formData.append("companyName", selectedHistoryItem.companyName);
+      }
+
+      await multipartPostWithAuth("/drive/cover-letter", formData, {
+        "X-Google-Token": googleToken,
+      });
+
+      setSaveMessage("Saved to Google Drive");
+    } catch (err) {
+      console.error("Failed to save version to Drive", err);
+      setSaveMessage("Failed to save to Google Drive");
+    } finally {
+      setSavingVersionToDrive(false);
+    }
+  };
+  
   const toggleStatus = async (item: HistoryItem) => {
     try {
       const auth = await getAuthData();
@@ -581,7 +646,7 @@ const HistoryPage: React.FC = () => {
             </Box>
           )}
         </DialogContent>
-        <DialogActions sx={{ justifyContent: "space-between" }}>
+        {/* <DialogActions sx={{ justifyContent: "space-between" }}>
           {copyMessage && (
             <Stack direction="row" spacing={0.5} alignItems="center">
               <CheckCircleIcon
@@ -595,7 +660,59 @@ const HistoryPage: React.FC = () => {
           )}
           <Box sx={{ flex: 1 }} />
           <Button onClick={closeVersions}>Close</Button>
+        </DialogActions> */}
+        <DialogActions sx={{ justifyContent: "space-between" }}>
+          <Stack direction="column" spacing={0.5}>
+            {copyMessage && (
+              <Stack direction="row" spacing={0.5} alignItems="center">
+                <CheckCircleIcon
+                  fontSize="small"
+                  sx={{ color: "success.main" }}
+                />
+                <Typography variant="caption" color="success.main">
+                  {copyMessage}
+                </Typography>
+              </Stack>
+            )}
+
+            {saveMessage && (
+              <Stack direction="row" spacing={0.5} alignItems="center">
+                <CloudUploadIcon
+                  fontSize="small"
+                  sx={{
+                    color: saveMessage.startsWith("Failed")
+                      ? "error.main"
+                      : "success.main",
+                  }}
+                />
+                <Typography
+                  variant="caption"
+                  color={
+                    saveMessage.startsWith("Failed") ? "error.main" : "success.main"
+                  }
+                >
+                  {saveMessage}
+                </Typography>
+              </Stack>
+            )}
+          </Stack>
+
+          <Box sx={{ flex: 1 }} />
+
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<CloudUploadIcon />}
+              onClick={handleSaveSelectedVersionToDrive}
+              disabled={savingVersionToDrive || versions.length === 0}
+            >
+              {savingVersionToDrive ? "Saving..." : "Save to Drive"}
+            </Button>
+            <Button onClick={closeVersions}>Close</Button>
+          </Stack>
         </DialogActions>
+
       </Dialog>
     </>
   );

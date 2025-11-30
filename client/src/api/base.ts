@@ -76,44 +76,38 @@ async function apiPost(endpoint: string, body: any) {
     body: JSON.stringify(body),
   });
 
-  // Gracefully handle API or text-based error responses
   if (!response.ok) {
-    let errorMessage = `POST ${endpoint} failed: ${response.status}`;
-    try {
-      const data = await response.json();
-      if (data?.error) errorMessage = data.error;
-    } catch (_) {
-      const text = await response.text();
-      if (text) errorMessage = text;
+    const errorText = await response.text();  // read ONCE
+    throw new Error(errorText || `Request failed: ${response.status}`);
+  }
+  return response.json();
+}
+
+  async function multipartPostWithAuth(
+    endpoint: string,
+    body: any,
+    extraHeaders?: Record<string, string>
+  ) {
+    const token = await getToken();
+    if (!token) throw new Error("Missing auth token");
+
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      method: "POST",
+      headers: {
+        // Note: browser will set multipart/form-data boundary automatically
+        Authorization: `Bearer ${token}`,
+        ...(extraHeaders || {}),
+      },
+      body,
+    });
+
+    if (!response.ok) {
+      throw new Error(`POST ${endpoint} failed: ${response.status}`);
     }
-    throw new Error(errorMessage);
+
+    return response.json();
   }
 
-  return response.json();
-}
-
-// -----------------------------
-// Multipart POST request (used for file uploads like resumes)
-// -----------------------------
-async function multipartPostWithAuth(endpoint: string, body: any) {
-  const token = await getToken();
-  if (!token) throw new Error("Missing auth token");
-
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    method: "POST",
-    headers: {
-      // Note: browser automatically sets proper multipart/form-data headers
-      Authorization: `Bearer ${token}`,
-    },
-    body: body,
-  });
-
-  if (!response.ok) {
-    throw new Error(`POST ${endpoint} failed: ${response.status}`);
-  }
-
-  return response.json();
-}
 
 // -----------------------------
 // Multipart GET request (used for downloading files)

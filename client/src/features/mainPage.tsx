@@ -25,9 +25,12 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DownloadIcon from "@mui/icons-material/Download";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import { getGoogleAccessToken } from "../utils/googleIdentity";
+import { multipartPostWithAuth } from "../api/base";
 
 import { postWithAuth } from "../api/base";
 import { JobDescription } from "../models/coverLetter";
+import { buildCoverLetterWordHtml } from "../utils/coverLetterExport";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import { getAuthData } from "../api/auth";
@@ -56,6 +59,8 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
   const [userPrompt, setUserPrompt] = useState<string>("");
   // show small "copied" feedback
   const [copySuccess, setCopySuccess] = useState<boolean>(false);
+
+  const [savingToDrive, setSavingToDrive] = useState<boolean>(false);
 
   // Scrape active tab for job details using content script
   const handleScrape = async () => {
@@ -160,29 +165,38 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
     }
 
     // convert markdown-ish text to simple HTML paragraphs
-    const wordHtml = `
-    <html>
-      <head>
-        <meta charset="utf-8" />
-        <style>
-          body { 
-            font-family: 'Times New Roman', serif; 
-            font-size: 12pt; 
-          }
-          p { 
-            line-height: 1.5; 
-            margin-bottom: 10pt; 
-          }
-        </style>
-      </head>
-      <body>
-        ${coverLetterMarkdown
-          .split("\n\n")
-          .map((para) => `<p>${para.replace(/\n/g, "<br>")}</p>`)
-          .join("")}
-      </body>
-    </html>
-  `;
+  //   const wordHtml = `
+  //   <html>
+  //     <head>
+  //       <meta charset="utf-8" />
+  //       <style>
+  //         body { 
+  //           font-family: 'Times New Roman', serif; 
+  //           font-size: 12pt; 
+  //         }
+  //         p { 
+  //           line-height: 1.5; 
+  //           margin-bottom: 10pt; 
+  //         }
+  //       </style>
+  //     </head>
+  //     <body>
+  //       ${coverLetterMarkdown
+  //         .split("\n\n")
+  //         .map((para) => `<p>${para.replace(/\n/g, "<br>")}</p>`)
+  //         .join("")}
+  //     </body>
+  //   </html>
+  // `;
+
+  
+  // ✅ Use the shared helper to build the HTML
+  const wordHtml = buildCoverLetterWordHtml(
+    coverLetterMarkdown,
+    scrapedData?.jobTitle,
+    scrapedData?.companyName
+  );
+
 
     const blob = new Blob([wordHtml], { type: "application/msword" });
     const dateStr = new Date().toISOString().split("T")[0];
@@ -228,6 +242,64 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
     const dateStr = new Date().toISOString().split("T")[0];
     pdf.save(`CoverLetter_${dateStr}.pdf`);
   };
+
+  const handleSaveToDrive = async () => {
+  if (!coverLetterMarkdown) {
+    alert("No cover letter available to save.");
+    return;
+  }
+
+  try {
+    setSavingToDrive(true);
+    setError("");
+
+    // 1. Our backend JWT is handled by multipartPostWithAuth
+    // 2. Get Google access token for Drive
+    const googleToken = await getGoogleAccessToken(true);
+
+    // 3. Build Word HTML using the shared helper
+    const wordHtml = buildCoverLetterWordHtml(
+      coverLetterMarkdown,
+      scrapedData?.jobTitle,
+      scrapedData?.companyName
+    );
+
+    const dateStr = new Date().toISOString().split("T")[0];
+    const fileName = `CoverLetter_${dateStr}.doc`;
+
+    // 4. Create a Blob and FormData to send to backend
+    const blob = new Blob([wordHtml], {
+      type: "application/msword",
+    });
+
+    const formData = new FormData();
+    formData.append("file", blob, fileName);
+    if (scrapedData?.jobTitle) {
+      formData.append("jobTitle", scrapedData.jobTitle);
+    }
+    if (scrapedData?.companyName) {
+      formData.append("companyName", scrapedData.companyName);
+    }
+
+    // 5. Call backend /api/drive/cover-letter
+    const result = await multipartPostWithAuth(
+      "/drive/cover-letter",
+      formData,
+      {
+        "X-Google-Token": googleToken,
+      }
+    );
+
+    console.log("Saved to Drive:", result);
+    alert("Cover letter saved to Google Drive!");
+  } catch (err: any) {
+    console.error("Error saving to Google Drive:", err);
+    setError(err?.message || "Could not save to Google Drive.");
+  } finally {
+    setSavingToDrive(false);
+  }
+};
+
 
   return (
     <Box
@@ -619,6 +691,27 @@ export default function MainPage({ isAuthenticated }: MainPageProps) {
                         }}
                       >
                         PDF
+                      </Button>
+                    </Tooltip>
+
+                    <Tooltip title="Save to Google Drive" arrow placement="top">
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={handleSaveToDrive}
+                        disabled={savingToDrive}
+                        startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
+                        sx={{
+                          borderColor: 'divider',
+                          color: 'text.secondary',
+                          '&:hover': {
+                            borderColor: 'success.main',
+                            color: 'success.main',
+                            bgcolor: 'rgba(34, 197, 94, 0.05)',
+                          },
+                        }}
+                      >
+                        {savingToDrive ? "Saving..." : "Save to Drive"}
                       </Button>
                     </Tooltip>
                   </Box>
