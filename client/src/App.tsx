@@ -17,11 +17,12 @@ import Navbar from "./components/navbar";
 import HomeIcon from "@mui/icons-material/Home";
 import HistoryIcon from "@mui/icons-material/History";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import LogoutIcon from "@mui/icons-material/Logout";
 import { NavItem } from "./types";
 import Profile from "./features/profile";
 import CenteredCircularProgress from "./components/centeredCircularProgress";
 import { removeAuth } from "./api/auth";
+import WorkIcon from '@mui/icons-material/Work';
+import JobBoard from "./features/jobBoard";
 
 export default function App() {
   const [user, setUser] = useState<boolean | null>(null);
@@ -36,8 +37,10 @@ export default function App() {
 
   const navItems: NavItem[] = [
     { id: "home", label: "Homepage", icon: <HomeIcon /> },
+    { id: "jobBoard", label: "Jobs", icon: <WorkIcon /> },
     { id: "history", label: "History", icon: <HistoryIcon /> },
     { id: "profile", label: "Profile", icon: <AccountCircleIcon /> },
+ 
   ];
 
   const [navDisabled, setNavDisabled] = useState<boolean>(true);
@@ -123,6 +126,8 @@ export default function App() {
         return <HistoryPage />;
       case "profile":
         return <Profile setAttentionItem={setAttentionItem} onLogout={handleLogout} />;
+      case "jobBoard":
+        return <JobBoard />;
       default:
         return <MainPage isAuthenticated={!!user} />;
     }
