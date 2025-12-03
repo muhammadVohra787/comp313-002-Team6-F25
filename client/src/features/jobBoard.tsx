@@ -11,15 +11,19 @@ import {
   ListItemText,
   IconButton,
   Tooltip,
+  TextField,
+  InputAdornment,
 } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import WorkIcon from "@mui/icons-material/Work";
+import SearchIcon from "@mui/icons-material/Search";
 import { getWithAuth } from "../api/base";
 
 const JobBoard = () => {
   const [jobs, setJobs] = React.useState<Record<string, string>>({});
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = React.useState("");
 
   React.useEffect(() => {
     const fetchJobs = async () => {
@@ -98,6 +102,10 @@ const JobBoard = () => {
     );
   }
 
+  const filteredJobs = Object.entries(jobs).filter(([title]) =>
+    title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <Box
       sx={{
@@ -108,12 +116,7 @@ const JobBoard = () => {
         bgcolor: "background.paper",
       }}
     >
-      <Stack
-        direction="row"
-        alignItems="center"
-        spacing={1}
-        sx={{ mb: 2 }}
-      >
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
         <Box>
           <Typography variant="h6" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
             Job Board
@@ -122,19 +125,36 @@ const JobBoard = () => {
             Browse available opportunities
           </Typography>
         </Box>
+
+        <Box sx={{ flex: 1 }} />
+
+        <TextField
+          size="small"
+          placeholder="Search by job title"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          sx={{ width: 260 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          }}
+        />
       </Stack>
 
       <List
         sx={{
           flex: 1,
           overflow: "auto",
-          maxHeight: "calc(100vh - 350px)",
+          maxHeight: "calc(100vh - 330px)",
           border: "1px solid",
           borderColor: "divider",
           borderRadius: 1,
         }}
       >
-        {Object.entries(jobs).map(([title, url], index) => (
+        {filteredJobs.map(([title, url], index) => (
           <ListItem
             key={title}
             disablePadding
@@ -155,17 +175,15 @@ const JobBoard = () => {
               </Tooltip>
             }
             sx={{
-              borderBottom: index !== Object.keys(jobs).length - 1 ? "1px solid" : "none",
+              borderBottom:
+                index !== filteredJobs.length - 1 ? "1px solid" : "none",
               borderColor: "divider",
               "&:hover": {
                 bgcolor: "action.hover",
               },
             }}
           >
-            <ListItemButton
-              onClick={() => openJobLink(url)}
-              sx={{ py: 1.5 }}
-            >
+            <ListItemButton onClick={() => openJobLink(url)} sx={{ py: 1.5 }}>
               <ListItemText
                 primary={
                   <Typography
@@ -188,4 +206,3 @@ const JobBoard = () => {
 };
 
 export default JobBoard;
-    
