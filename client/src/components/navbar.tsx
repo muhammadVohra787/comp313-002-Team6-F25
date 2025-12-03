@@ -42,8 +42,8 @@ const Navbar = (props: NavbarProps) => {
                 flexDirection: "column",
                 alignItems: "center",
                 gap: 0.5,
-                py: 1,
-                px: 1,
+                py: 0.5,
+                px: 0.5,
                 borderRadius: 2.5,
                 transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                 bgcolor: isActive ? "background.paper" : "transparent",
@@ -57,12 +57,12 @@ const Navbar = (props: NavbarProps) => {
                   : "none",
                 "&:hover": !disabled
                   ? {
-                    bgcolor: isActive
-                      ? "background.paper"
-                      : "rgba(255, 255, 255, 0.7)",
-                    transform: "translateY(-2px)",
-                    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
-                  }
+                      bgcolor: isActive
+                        ? "background.paper"
+                        : "rgba(255, 255, 255, 0.7)",
+                      transform: "translateY(-2px)",
+                      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+                    }
                   : {},
               }}
             >
@@ -71,9 +71,7 @@ const Navbar = (props: NavbarProps) => {
                 size="small"
                 sx={{
                   color: "inherit",
-                  bgcolor: isActive
-                    ? "rgba(79, 70, 229, 0.08)"
-                    : "transparent",
+                  bgcolor: isActive ? "rgba(79, 70, 229, 0.08)" : "transparent",
                   transition: "all 0.2s ease",
                   "&:hover": {
                     bgcolor: isActive

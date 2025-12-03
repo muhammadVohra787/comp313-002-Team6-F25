@@ -59,7 +59,7 @@ def init_history_routes(app):
                     "location": doc.get("location"),
                     "url": doc.get("url"),
                     "source": doc.get("source"),
-                    "status": doc.get("status", "Not Applied"),
+                    "status": doc.get("status", "Applied"),
                     "tone": doc.get("tone"),
                     "createdAt": created_at
                 })
@@ -196,7 +196,7 @@ def init_history_routes(app):
                     doc.get("location", ""),
                     doc.get("url", ""),
                     doc.get("source", ""),
-                    doc.get("status", "Not Applied"),
+                    doc.get("status", "Applied"),
                     doc.get("tone", ""),
                     created_at or "",
                 ])
@@ -214,3 +214,38 @@ def init_history_routes(app):
 
         except Exception as e:
             return jsonify({"error": f"Failed to export history: {str(e)}"}), 500
+
+    # GET /api/history/unique-jobs  -> Get all unique job titles and links
+    @app.route("/api/history/unique-jobs", methods=["GET"])
+    def get_unique_jobs():
+        """
+        Return all unique job titles and links across all jobs.
+        Returns a dictionary mapping job titles to their links.
+        Requires user authentication (user_id must be provided).
+        """
+        db = get_db()
+
+        user_id, error = _get_user_id_from_request()
+        if error:
+            msg, code = error
+            return jsonify({"error": msg}), code
+
+        try:
+            cursor = (
+                db.job_history
+                .find({})
+            )
+
+            unique_jobs = {}
+            for doc in cursor:
+                job_title = doc.get("job_title")
+                url = doc.get("url")
+                
+                # Only add if both job_title and url exist
+                if job_title and url:
+                    unique_jobs[job_title] = url
+
+            return jsonify({"unique_jobs": unique_jobs}), 200
+
+        except Exception as e:
+            return jsonify({"error": f"Failed to fetch unique jobs: {str(e)}"}), 500
