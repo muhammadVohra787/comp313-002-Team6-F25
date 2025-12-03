@@ -154,7 +154,7 @@ def init_cover_letter_routes(app):
                         "location": location,
                         "url": job_url,
                         "source": source,
-                        "status": "Not Applied",
+                        "status": "Applied",
                         "tone": tone,
                         "created_at": datetime.utcnow(),
                     }

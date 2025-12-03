@@ -59,7 +59,7 @@ def init_history_routes(app):
                     "location": doc.get("location"),
                     "url": doc.get("url"),
                     "source": doc.get("source"),
-                    "status": doc.get("status", "Not Applied"),
+                    "status": doc.get("status", "Applied"),
                     "tone": doc.get("tone"),
                     "createdAt": created_at
                 })
@@ -196,7 +196,7 @@ def init_history_routes(app):
                     doc.get("location", ""),
                     doc.get("url", ""),
                     doc.get("source", ""),
-                    doc.get("status", "Not Applied"),
+                    doc.get("status", "Applied"),
                     doc.get("tone", ""),
                     created_at or "",
                 ])
