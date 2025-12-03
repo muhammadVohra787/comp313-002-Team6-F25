@@ -21,7 +21,7 @@ import { NavItem } from "./types";
 import Profile from "./features/profile";
 import CenteredCircularProgress from "./components/centeredCircularProgress";
 import { removeAuth } from "./api/auth";
-import WorkIcon from '@mui/icons-material/Work';
+import WorkIcon from "@mui/icons-material/Work";
 import JobBoard from "./features/jobBoard";
 
 export default function App() {
@@ -40,7 +40,6 @@ export default function App() {
     { id: "jobBoard", label: "Jobs", icon: <WorkIcon /> },
     { id: "history", label: "History", icon: <HistoryIcon /> },
     { id: "profile", label: "Profile", icon: <AccountCircleIcon /> },
- 
   ];
 
   const [navDisabled, setNavDisabled] = useState<boolean>(true);
@@ -81,7 +80,10 @@ export default function App() {
   const handleLogout = async () => {
     try {
       await removeAuth();
-      if (typeof chrome !== "undefined" && chrome.identity?.clearAllCachedAuthTokens) {
+      if (
+        typeof chrome !== "undefined" &&
+        chrome.identity?.clearAllCachedAuthTokens
+      ) {
         await new Promise<void>((resolve) => {
           try {
             chrome.identity.clearAllCachedAuthTokens(() => resolve());
@@ -125,7 +127,12 @@ export default function App() {
       case "history":
         return <HistoryPage />;
       case "profile":
-        return <Profile setAttentionItem={setAttentionItem} onLogout={handleLogout} />;
+        return (
+          <Profile
+            setAttentionItem={setAttentionItem}
+            onLogout={handleLogout}
+          />
+        );
       case "jobBoard":
         return <JobBoard />;
       default:
@@ -208,9 +215,7 @@ export default function App() {
             </Box>
             <Tooltip
               title={
-                user
-                  ? "Signed in successfully"
-                  : "Sign in to unlock features"
+                user ? "Signed in successfully" : "Sign in to unlock features"
               }
               arrow
             >
@@ -237,7 +242,7 @@ export default function App() {
         </Box>
 
         {/* Navigation */}
-        <Box sx={{ px: 3, pt: 2.5, pb: 1.5 }}>
+        <Box sx={{ px: 1.5, pt: 2, pb: 1.5 }}>
           <Navbar
             navItems={navItems}
             active={active}
