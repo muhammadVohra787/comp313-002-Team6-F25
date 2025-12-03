@@ -83,7 +83,6 @@ const HistoryPage: React.FC = () => {
   const [savingVersionToDrive, setSavingVersionToDrive] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
-
   useEffect(() => {
     const loadHistory = async () => {
       setLoading(true);
@@ -192,7 +191,7 @@ const HistoryPage: React.FC = () => {
       setSavingVersionToDrive(false);
     }
   };
-  
+
   const toggleStatus = async (item: HistoryItem) => {
     try {
       const auth = await getAuthData();
@@ -202,7 +201,9 @@ const HistoryPage: React.FC = () => {
       }
 
       const newStatus =
-        (item.status || "Not Applied") === "Applied" ? "Not Applied" : "Applied";
+        (item.status || "Not Applied") === "Applied"
+          ? "Not Applied"
+          : "Applied";
 
       setUpdatingStatusId(item.id);
 
@@ -221,9 +222,7 @@ const HistoryPage: React.FC = () => {
       }
 
       setHistory((prev) =>
-        prev.map((h) =>
-          h.id === item.id ? { ...h, status: newStatus } : h
-        )
+        prev.map((h) => (h.id === item.id ? { ...h, status: newStatus } : h))
       );
     } catch (err: any) {
       console.error("Failed to update status", err);
@@ -336,14 +335,15 @@ const HistoryPage: React.FC = () => {
   const selectedVersion =
     versions.length > 0 ? versions[selectedVersionIndex] : null;
   const selectedVersionLabel =
-    selectedVersion?.version ?? (selectedVersion ? selectedVersionIndex + 1 : 1);
+    selectedVersion?.version ??
+    (selectedVersion ? selectedVersionIndex + 1 : 1);
 
   return (
     <>
       {/* Main history table */}
       <Box
         sx={{
-          height: "100%",
+          maxHeight: "calc(100vh - 220px)",
           display: "flex",
           flexDirection: "column",
           p: 2.5,
@@ -382,14 +382,17 @@ const HistoryPage: React.FC = () => {
         <TableContainer
           component={Paper}
           variant="outlined"
-          sx={{ flex: 1, overflow: "auto", borderRadius: 2 }}
+          sx={{
+            flex: 1,
+            overflow: "auto",
+            borderRadius: 2,
+          }}
         >
           <Table size="small">
             <TableHead>
               <TableRow>
                 <TableCell>Date</TableCell>
                 <TableCell>Job Title</TableCell>
-                <TableCell>Company</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Versions</TableCell>
                 <TableCell align="right">Link</TableCell>
@@ -400,8 +403,7 @@ const HistoryPage: React.FC = () => {
                 const date = item.createdAt
                   ? new Date(item.createdAt).toLocaleDateString()
                   : "";
-                const isApplied =
-                  (item.status || "Not Applied") === "Applied";
+                const isApplied = (item.status || "Not Applied") === "Applied";
                 const isUpdating = updatingStatusId === item.id;
 
                 return (
@@ -421,7 +423,6 @@ const HistoryPage: React.FC = () => {
                         </Typography>
                       )}
                     </TableCell>
-                    <TableCell>{item.companyName}</TableCell>
                     <TableCell>
                       <Tooltip
                         title={
@@ -581,9 +582,7 @@ const HistoryPage: React.FC = () => {
                         color="text.secondary"
                         sx={{ whiteSpace: "nowrap" }}
                       >
-                        {new Date(
-                          selectedVersion.createdAt
-                        ).toLocaleString()}
+                        {new Date(selectedVersion.createdAt).toLocaleString()}
                       </Typography>
                     )}
                     <Tooltip title="Copy this version to clipboard">
@@ -606,7 +605,9 @@ const HistoryPage: React.FC = () => {
               <Divider />
 
               {selectedVersion && (
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                <Box
+                  sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}
+                >
                   {selectedVersion.userPrompt && (
                     <Box>
                       <Typography
@@ -688,7 +689,9 @@ const HistoryPage: React.FC = () => {
                 <Typography
                   variant="caption"
                   color={
-                    saveMessage.startsWith("Failed") ? "error.main" : "success.main"
+                    saveMessage.startsWith("Failed")
+                      ? "error.main"
+                      : "success.main"
                   }
                 >
                   {saveMessage}
@@ -712,7 +715,6 @@ const HistoryPage: React.FC = () => {
             <Button onClick={closeVersions}>Close</Button>
           </Stack>
         </DialogActions>
-
       </Dialog>
     </>
   );
