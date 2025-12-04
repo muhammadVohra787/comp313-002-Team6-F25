@@ -62,7 +62,8 @@ interface LetterVersion {
   createdAt?: string;
 }
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE =
+  `${import.meta.env.VITE_API_URL}/api` || "http://localhost:5000";
 
 const HistoryPage: React.FC = () => {
   const [history, setHistory] = useState<HistoryItem[]>([]);
