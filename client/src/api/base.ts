@@ -1,6 +1,6 @@
 import { getAuthData } from "./auth";
 
-const API_BASE = "http://localhost:5000/api"; // Base URL for backend API
+const API_BASE = `${import.meta.env.VITE_API_URL}/api` || "http://localhost:5000"
 
 // -----------------------------
 // Get JWT token from local storage
@@ -83,30 +83,30 @@ async function apiPost(endpoint: string, body: any) {
   return response.json();
 }
 
-  async function multipartPostWithAuth(
-    endpoint: string,
-    body: any,
-    extraHeaders?: Record<string, string>
-  ) {
-    const token = await getToken();
-    if (!token) throw new Error("Missing auth token");
+async function multipartPostWithAuth(
+  endpoint: string,
+  body: any,
+  extraHeaders?: Record<string, string>
+) {
+  const token = await getToken();
+  if (!token) throw new Error("Missing auth token");
 
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-      method: "POST",
-      headers: {
-        // Note: browser will set multipart/form-data boundary automatically
-        Authorization: `Bearer ${token}`,
-        ...(extraHeaders || {}),
-      },
-      body,
-    });
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    method: "POST",
+    headers: {
+      // Note: browser will set multipart/form-data boundary automatically
+      Authorization: `Bearer ${token}`,
+      ...(extraHeaders || {}),
+    },
+    body,
+  });
 
-    if (!response.ok) {
-      throw new Error(`POST ${endpoint} failed: ${response.status}`);
-    }
-
-    return response.json();
+  if (!response.ok) {
+    throw new Error(`POST ${endpoint} failed: ${response.status}`);
   }
+
+  return response.json();
+}
 
 
 // -----------------------------
