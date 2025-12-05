@@ -25,6 +25,7 @@ export default function SignInPage({
 }: {
   setAttentionItem: SetAttentionItem;
 }) {
+  const API_BASE = `${import.meta.env.VITE_API_URL}` || "http://localhost:5000";
   // loading state for button and auth flow
   const [loading, setLoading] = useState(false);
   // error message from Google or backend
@@ -36,7 +37,7 @@ export default function SignInPage({
     setLoading(true);
 
     try {
-      const authUrl = "http://localhost:5000/auth/google/start";
+      const authUrl = `${API_BASE}/auth/google/start`;
       const popup = window.open(
         authUrl,
         "jobmate-auth-popup",
