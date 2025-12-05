@@ -1,9 +1,11 @@
-from flask import jsonify, request
+from flask import jsonify, request, redirect, Response
+
 import requests
 from bson import ObjectId
 from datetime import datetime, timedelta
 from config.database import get_db
 from utils.jwt_utils import create_access_token
+
 from jwt import ExpiredSignatureError, InvalidTokenError
 import jwt
 import os
@@ -13,7 +15,15 @@ from utils.jwt_utils import validate_token
 JWT_SECRET = os.getenv('JWT_SECRET', 'your-256-bit-secret')
 JWT_ALGORITHM = 'HS256'
 GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
+GOOGLE_OAUTH_AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token"
+
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "")
+
 ALLOW_PROFILE_FALLBACK = os.getenv("ALLOW_PROFILE_FALLBACK", "true").lower() == "true"
+
 
 def _serialize_document(value):
     """
@@ -30,7 +40,192 @@ def _serialize_document(value):
 
 
 def init_auth_routes(app):
-    # ---------------- GOOGLE AUTH ROUTE ----------------
+    # ---------------- GOOGLE AUTH REDIRECT FLOW (WEB) ----------------
+
+    @app.route("/auth/google/start", methods=["GET"])
+    def auth_google_start():
+        if not GOOGLE_CLIENT_ID or not GOOGLE_REDIRECT_URI:
+            return jsonify({"error": "Google OAuth not configured"}), 500
+
+        state = request.args.get("state", "")
+
+        params = {
+            "client_id": GOOGLE_CLIENT_ID,
+            "redirect_uri": GOOGLE_REDIRECT_URI,
+            "response_type": "code",
+            "scope": "openid email profile",
+            "access_type": "online",
+            "include_granted_scopes": "true",
+            "state": state,
+            "prompt": "select_account",
+        }
+
+        query = "&".join(f"{key}={requests.utils.quote(str(value))}" for key, value in params.items() if value)
+        return redirect(f"{GOOGLE_OAUTH_AUTHORIZE_URL}?{query}")
+
+    @app.route("/auth/google/callback", methods=["GET"])
+    def auth_google_callback():
+        error_param = request.args.get("error")
+        if error_param:
+            # User cancelled or Google returned an OAuth error. Inform the opener
+            # and close the popup so the UI can handle it gracefully.
+            import json as _json
+
+            html_error = f"""<!doctype html>
+<html>
+  <head>
+    <meta charset='utf-8' />
+    <title>Jobmate AI Login</title>
+  </head>
+  <body>
+    <script>
+      (function() {{
+        try {{
+          var payload = {{ error: {_json.dumps(error_param)} }};
+          if (window.opener && !window.opener.closed) {{
+            window.opener.postMessage({{ type: 'jobmate-auth-error', payload: payload }}, '*');
+          }}
+        }} catch (e) {{
+          console.error('Error posting auth error', e);
+        }} finally {{
+          window.close();
+        }}
+      }})();
+    </script>
+  </body>
+</html>"""
+
+            return Response(html_error, mimetype="text/html")
+
+        code = request.args.get("code")
+        if not code:
+            return jsonify({"error": "Missing authorization code"}), 400
+
+        if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET or not GOOGLE_REDIRECT_URI:
+            return jsonify({"error": "Google OAuth not configured"}), 500
+
+        try:
+            # Exchange authorization code for tokens
+            token_resp = requests.post(
+                GOOGLE_OAUTH_TOKEN_URL,
+                data={
+                    "code": code,
+                    "client_id": GOOGLE_CLIENT_ID,
+                    "client_secret": GOOGLE_CLIENT_SECRET,
+                    "redirect_uri": GOOGLE_REDIRECT_URI,
+                    "grant_type": "authorization_code",
+                },
+                timeout=10,
+            )
+
+            if token_resp.status_code != 200:
+                return jsonify({"error": "Failed to exchange code for tokens"}), 400
+
+            token_data = token_resp.json()
+            access_token = token_data.get("access_token")
+            if not access_token:
+                return jsonify({"error": "No access token returned from Google"}), 400
+
+            # Reuse existing logic below to fetch Google user and create/find local user
+            google_user = None
+            verification_error = None
+
+            try:
+                r = requests.get(
+                    GOOGLE_USERINFO_URL,
+                    headers={"Authorization": f"Bearer {access_token}"},
+                    timeout=10,
+                )
+                if r.status_code == 200:
+                    google_user = r.json()
+                else:
+                    verification_error = f"Google userinfo responded with status {r.status_code}"
+            except requests.RequestException as verify_exc:
+                verification_error = str(verify_exc)
+
+            if google_user is None:
+                if verification_error:
+                    return jsonify({"error": f"Unable to verify Google token: {verification_error}"}), 401
+                return jsonify({"error": "Unable to verify Google token"}), 401
+
+            if not google_user.get("id") or not google_user.get("email"):
+                return jsonify({"error": "Google profile information incomplete"}), 400
+
+            db = get_db()
+            user = db.users.find_one({"google_id": google_user["id"]})
+            if user:
+                user = _serialize_document(user)
+
+            if not user:
+                user_data = {
+                    "google_id": google_user["id"],
+                    "email": google_user["email"],
+                    "name": google_user.get("name", ""),
+                    "picture": google_user.get("picture", ""),
+                    "city": None,
+                    "country": None,
+                    "postal_code": None,
+                    "personal_prompt": None,
+                    "attention_needed": True,
+                }
+                result = db.users.insert_one(user_data)
+                user_data["_id"] = str(result.inserted_id)
+                user = user_data
+            else:
+                user["_id"] = str(user["_id"])
+
+            jwt_payload = {
+                "id": str(user["_id"]),
+                "sub": str(user["_id"]),
+                "email": user["email"],
+                "name": user["name"],
+            }
+            app_token = create_access_token(jwt_payload)
+
+            user_response = _serialize_document({
+                **user,
+                "id": user["_id"],
+                "google_id": user.get("google_id"),
+            })
+            user_response.pop("_id", None)
+
+            import json as _json
+
+            # Embed JSON-serialized user and token into a small HTML page that
+            # posts a message back to the opener and then closes the popup.
+            html = f"""<!doctype html>
+<html>
+  <head>
+    <meta charset='utf-8' />
+    <title>Jobmate AI Login</title>
+  </head>
+  <body>
+    <script>
+      (function() {{
+        try {{
+          var payload = {{ user: {_json.dumps(user_response)}, token: {_json.dumps(app_token)} }};
+          if (window.opener && !window.opener.closed) {{
+            window.opener.postMessage({{ type: 'jobmate-auth', payload: payload }}, '*');
+          }}
+        }} catch (e) {{
+          console.error('Error posting auth result', e);
+        }} finally {{
+          window.close();
+        }}
+      }})();
+    </script>
+  </body>
+</html>"""
+
+            return Response(html, mimetype="text/html")
+
+        except requests.RequestException as e:
+            return jsonify({"error": f"Error during Google OAuth callback: {str(e)}"}), 500
+        except Exception as e:
+            return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
+
+    # ---------------- GOOGLE AUTH ROUTE (TOKEN-BASED, EXTENSION) ----------------
+
     @app.route("/api/auth/google", methods=["POST"])
     def auth_google():
         # Receive Google token and optional profile info from client
