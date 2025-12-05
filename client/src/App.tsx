@@ -59,21 +59,41 @@ export default function App() {
 
     checkAuth();
 
-    const handleStorageChange = (
-      changes: { [key: string]: chrome.storage.StorageChange },
-      area: string
-    ) => {
-      if (area === "local" && changes.auth) {
-        const hasToken = !!changes.auth.newValue?.token;
-        setUser(hasToken);
-        setNavDisabled(!hasToken);
-      }
-    };
+    let handleStorageChange:
+      | ((
+          changes: { [key: string]: chrome.storage.StorageChange },
+          area: string
+        ) => void)
+      | null = null;
 
-    chrome.storage.onChanged.addListener(handleStorageChange);
+    if (
+      typeof chrome !== "undefined" &&
+      chrome.storage &&
+      chrome.storage.onChanged
+    ) {
+      handleStorageChange = (
+        changes: { [key: string]: chrome.storage.StorageChange },
+        area: string
+      ) => {
+        if (area === "local" && changes.auth) {
+          const hasToken = !!changes.auth.newValue?.token;
+          setUser(hasToken);
+          setNavDisabled(!hasToken);
+        }
+      };
+
+      chrome.storage.onChanged.addListener(handleStorageChange);
+    }
 
     return () => {
-      chrome.storage.onChanged.removeListener(handleStorageChange);
+      if (
+        handleStorageChange &&
+        typeof chrome !== "undefined" &&
+        chrome.storage &&
+        chrome.storage.onChanged
+      ) {
+        chrome.storage.onChanged.removeListener(handleStorageChange);
+      }
     };
   }, []);
 
