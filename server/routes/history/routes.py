@@ -150,6 +150,39 @@ def init_history_routes(app):
         except Exception as e:
             return jsonify({"error": f"Failed to update status: {str(e)}"}), 500
 
+    # DELETE /api/history/<history_id>  -> Remove a job from history (and its letters)
+    @app.route("/api/history/<history_id>", methods=["DELETE"])
+    def delete_history_item(history_id):
+        """
+        Delete a single job application history item for the current user.
+        Also deletes any associated cover letter versions.
+        """
+        db = get_db()
+
+        user_id, error = _get_user_id_from_request()
+        if error:
+            msg, code = error
+            return jsonify({"error": msg}), code
+
+        try:
+            # Ensure the history entry belongs to this user
+            result = db.job_history.delete_one(
+                {"_id": ObjectId(history_id), "user_id": ObjectId(user_id)}
+            )
+
+            if result.deleted_count == 0:
+                return jsonify({"error": "History item not found"}), 404
+
+            # Cascade delete associated cover letters (if any)
+            db.cover_letters.delete_many(
+                {"history_id": ObjectId(history_id), "user_id": ObjectId(user_id)}
+            )
+
+            return jsonify({"id": history_id, "deleted": True}), 200
+
+        except Exception as e:
+            return jsonify({"error": f"Failed to delete history item: {str(e)}"}), 500
+
     # GET /api/history/export  -> Export job history as CSV for Google Sheets
     @app.route("/api/history/export", methods=["GET"])
     def export_history():
