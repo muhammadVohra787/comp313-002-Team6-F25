@@ -30,6 +30,7 @@ import {
 import DownloadIcon from "@mui/icons-material/Download";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import HistoryIcon from "@mui/icons-material/History";
+import DeleteIcon from "@mui/icons-material/Delete";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
@@ -71,6 +72,7 @@ const HistoryPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Versions modal state
   const [versionsOpen, setVersionsOpen] = useState(false);
@@ -258,6 +260,45 @@ const HistoryPage: React.FC = () => {
     }
   };
 
+  const handleDelete = async (item: HistoryItem) => {
+    const confirmed = window.confirm(
+      "Remove this job from your history? This will also remove its saved cover letters."
+    );
+    if (!confirmed) return;
+
+    try {
+      const auth = await getAuthData();
+      if (!auth?.token) {
+        setError("Please sign in again to delete jobs.");
+        return;
+      }
+
+      setDeletingId(item.id);
+
+      const res = await fetch(`${API_BASE}/history/${item.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${auth.token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to delete history item");
+      }
+
+      setHistory((prev) => prev.filter((h) => h.id !== item.id));
+    } catch (err: any) {
+      console.error("Failed to delete history item", err);
+      setError(
+        err?.message ||
+          "Failed to delete this job from history. Please try again."
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const closeVersions = () => {
     setVersionsOpen(false);
     setSelectedHistoryItem(null);
@@ -396,7 +437,7 @@ const HistoryPage: React.FC = () => {
                 <TableCell>Job Title</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Versions</TableCell>
-                <TableCell align="right">Link</TableCell>
+                <TableCell align="right">Link / Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -463,18 +504,35 @@ const HistoryPage: React.FC = () => {
                       </Tooltip>
                     </TableCell>
                     <TableCell align="right">
-                      {item.url && (
-                        <Tooltip title="Open job posting">
-                          <IconButton
-                            size="small"
-                            href={item.url}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            <OpenInNewIcon fontSize="small" />
-                          </IconButton>
+                      <Stack
+                        direction="row"
+                        spacing={0.5}
+                        justifyContent="flex-end"
+                      >
+                        {item.url && (
+                          <Tooltip title="Open job posting">
+                            <IconButton
+                              size="small"
+                              href={item.url}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              <OpenInNewIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        <Tooltip title="Delete from history">
+                          <span>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleDelete(item)}
+                              disabled={deletingId === item.id}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </span>
                         </Tooltip>
-                      )}
+                      </Stack>
                     </TableCell>
                   </TableRow>
                 );
